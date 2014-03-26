@@ -19,7 +19,7 @@ use dom::comment::Comment;
 use dom::document::{Document, HTMLDocument, NonHTMLDocument};
 use dom::documentfragment::DocumentFragment;
 use dom::documenttype::DocumentType;
-use dom::element::{Element, ElementTypeId, HTMLAnchorElementTypeId, IElement};
+use dom::element::{Element, ElementTypeId, HTMLAnchorElementTypeId, HTMLStyleElementTypeId, IElement, parse_css_from_element};
 use dom::eventtarget::{EventTarget, NodeTargetTypeId};
 use dom::nodelist::{NodeList};
 use dom::text::Text;
@@ -270,6 +270,8 @@ pub trait NodeHelpers {
     fn add_child(&mut self, new_child: &mut JS<Node>, before: Option<JS<Node>>);
     fn remove_child(&mut self, child: &mut JS<Node>);
 
+    fn notify_child_list_changed(&self);
+
     fn get_hover_state(&self) -> bool;
     fn set_hover_state(&mut self, state: bool);
 
@@ -412,6 +414,7 @@ impl NodeHelpers for JS<Node> {
             }
         }
 
+        self.parent_node().map(|parent| parent.notify_child_list_changed());
         document.get().content_changed();
     }
 
@@ -427,6 +430,7 @@ impl NodeHelpers for JS<Node> {
             }
         }
 
+        self.parent_node().map(|parent| parent.notify_child_list_changed());
         document.get().content_changed();
     }
 
@@ -504,6 +508,13 @@ impl NodeHelpers for JS<Node> {
         child_node.set_next_sibling(None);
         child_node.set_parent_node(None);
     }
+
+    fn notify_child_list_changed(&self) {
+        if self.type_id() == ElementNodeTypeId(HTMLStyleElementTypeId) {
+            parse_css_from_element(self);
+        }
+    }
+
 
     fn get_hover_state(&self) -> bool {
         self.get().flags.get_in_hover_state()
