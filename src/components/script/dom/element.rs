@@ -23,11 +23,9 @@ use dom::htmliframeelement::HTMLIFrameElement;
 use dom::htmlobjectelement::HTMLObjectElement;
 use dom::htmlserializer::serialize;
 use dom::node::{ElementNodeTypeId, Node, NodeHelpers, NodeIterator, document_from_node};
-use dom::node::window_from_node;
-use html::cssparse::parse_inline_css;
 use layout_interface::{ContentBoxQuery, ContentBoxResponse, ContentBoxesQuery};
 use layout_interface::{ContentBoxesResponse, ContentChangedDocumentDamage};
-use layout_interface::{MatchSelectorsDocumentDamage, AddStylesheetMsg, LayoutChan};
+use layout_interface::MatchSelectorsDocumentDamage;
 use style;
 use servo_util::namespace;
 use servo_util::namespace::{Namespace, Null};
@@ -643,19 +641,6 @@ impl IElement for JS<Element> {
             }
             _ => ()
         }
-    }
-}
-
-pub fn parse_css_from_element(node: &JS<Node>) {
-    if node.type_id() == ElementNodeTypeId(HTMLStyleElementTypeId) {
-        // An inline stylesheet was added/changed. Send it to layout task via AddStylesheet.
-        node.get().GetTextContent(node).map(|data| {
-            let win = window_from_node(node);
-            let url = win.get().page().get_url();
-            let sheet = parse_inline_css(url, data);
-            let LayoutChan(ref layout_chan) = win.get().page().layout_chan;
-            layout_chan.send(AddStylesheetMsg(sheet));
-        });
     }
 }
 

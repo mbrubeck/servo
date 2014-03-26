@@ -6,7 +6,7 @@
 
 use dom::attr::Attr;
 use dom::bindings::codegen::InheritTypes::{CommentCast, DocumentCast, DocumentTypeCast};
-use dom::bindings::codegen::InheritTypes::{ElementCast, TextCast, NodeCast};
+use dom::bindings::codegen::InheritTypes::{ElementCast, HTMLStyleElementCast, TextCast, NodeCast};
 use dom::bindings::codegen::InheritTypes::{CharacterDataCast, NodeBase, NodeDerived};
 use dom::bindings::codegen::InheritTypes::ProcessingInstructionCast;
 use dom::bindings::codegen::NodeBinding::NodeConstants;
@@ -19,8 +19,9 @@ use dom::comment::Comment;
 use dom::document::{Document, HTMLDocument, NonHTMLDocument};
 use dom::documentfragment::DocumentFragment;
 use dom::documenttype::DocumentType;
-use dom::element::{Element, ElementTypeId, HTMLAnchorElementTypeId, HTMLStyleElementTypeId, IElement, parse_css_from_element};
+use dom::element::{Element, ElementTypeId, HTMLAnchorElementTypeId, IElement};
 use dom::eventtarget::{EventTarget, NodeTargetTypeId};
+use dom::htmlstyleelement::StyleElementHelpers;
 use dom::nodelist::{NodeList};
 use dom::text::Text;
 use dom::processinginstruction::ProcessingInstruction;
@@ -510,8 +511,9 @@ impl NodeHelpers for JS<Node> {
     }
 
     fn notify_child_list_changed(&self) {
-        if self.type_id() == ElementNodeTypeId(HTMLStyleElementTypeId) {
-            parse_css_from_element(self);
+        match HTMLStyleElementCast::to(self) {
+            Some(elem) => { elem.parse_own_css() },
+            None => {}
         }
     }
 
