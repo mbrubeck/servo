@@ -20,6 +20,7 @@ use dom::eventtarget::{EventTarget, NodeTargetTypeId};
 use dom::htmlcollection::HTMLCollection;
 use dom::htmlimageelement::HTMLImageElement;
 use dom::htmliframeelement::HTMLIFrameElement;
+use dom::htmllinkelement::HTMLLinkElement;
 use dom::htmlobjectelement::HTMLObjectElement;
 use dom::htmlserializer::serialize;
 use dom::node::{ElementNodeTypeId, Node, NodeHelpers, NodeIterator, document_from_node};
@@ -293,6 +294,10 @@ impl AttributeHandlers for JS<Element> {
             }
             ElementNodeTypeId(HTMLIFrameElementTypeId) => {
                 let mut elem: JS<HTMLIFrameElement> = HTMLIFrameElementCast::to(self).unwrap();
+                elem.AfterSetAttr(local_name.clone(), value.clone());
+            }
+            ElementNodeTypeId(HTMLLinkElement) => {
+                let mut elem: JS<HTMLLinkElement> = HTMLLinkElement::to(self).unwrap();
                 elem.AfterSetAttr(local_name.clone(), value.clone());
             }
             ElementNodeTypeId(HTMLObjectElementTypeId) => {

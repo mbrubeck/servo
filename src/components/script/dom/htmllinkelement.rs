@@ -3,15 +3,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use dom::bindings::codegen::HTMLLinkElementBinding;
-use dom::bindings::codegen::InheritTypes::HTMLLinkElementDerived;
+use dom::bindings::codegen::InheritTypes::{ElementCast, HTMLLinkElementDerived};
 use dom::bindings::js::JS;
 use dom::bindings::error::ErrorResult;
 use dom::document::Document;
-use dom::element::HTMLLinkElementTypeId;
+use dom::element::{AttributeHandlers, AfterSetAttrListener, BeforeRemoveAttrListener};
+use dom::element::{Element, HTMLLinkElementTypeId};
 use dom::eventtarget::{EventTarget, NodeTargetTypeId};
 use dom::htmlelement::HTMLElement;
-use dom::node::{Node, ElementNodeTypeId};
-use servo_util::str::DOMString;
+use dom::node::{Node, ElementNodeTypeId, window_from_node};
+use servo_util::namespace::Null;
+use servo_util::str::{DOMString, HTML_SPACE_CHARACTERS};
+use servo_util::url::parse_url;
 
 #[deriving(Encodable)]
 pub struct HTMLLinkElement {
@@ -120,3 +123,28 @@ impl HTMLLinkElement {
         Ok(())
     }
 }
+
+impl AfterSetAttrListener for JS<HTMLLinkElement> {
+    fn AfterSetAttr(&mut self, name: DOMString, value: DOMString) {
+        let elem: JS<Element> = ElementCast::from(self);
+        if "rel" == name || "href" == name {
+            match (elem.get_attribute(Null, "rel"), elem.get_attribute(Null, "href")) {
+                (Some(ref rel), Some(ref href)) if rel.get()
+                                                      .value_ref()
+                                                      .split(HTML_SPACE_CHARACTERS.
+                                                             as_slice())
+                                                      .any(|s| {
+                            s.eq_ignore_ascii_case("stylesheet")
+                        }) => {
+                    debug!("found CSS stylesheet: {:s}", href.get().value_ref());
+                    let window = window_from_node(self);
+                    let base_url = Some(window.get().get_url());
+                    let url = parse_url(href.get().value_ref(), Some(base_url.clone()));
+                    //css_chan2.send(CSSTaskNewFile(UrlProvenance(url)));
+                }
+                _ => ()
+            }
+        }
+    }
+}
+
