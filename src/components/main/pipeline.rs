@@ -24,6 +24,7 @@ use url::Url;
 /// A uniquely-identifiable pipeline of script task, layout task, and render task.
 pub struct Pipeline {
     pub id: PipelineId,
+    pub parent_id: Option<PipelineId>,
     pub subpage_id: Option<SubpageId>,
     pub script_chan: ScriptChan,
     pub layout_chan: LayoutChan,
@@ -38,6 +39,7 @@ pub struct Pipeline {
 #[deriving(Clone)]
 pub struct CompositionPipeline {
     pub id: PipelineId,
+    pub parent_id: Option<PipelineId>,
     pub script_chan: ScriptChan,
     pub render_chan: RenderChan,
 }
@@ -46,6 +48,7 @@ impl Pipeline {
     /// Starts a render task, layout task, and script task. Returns the channels wrapped in a
     /// struct.
     pub fn with_script(id: PipelineId,
+                       parent_id: PipelineId,
                        subpage_id: Option<SubpageId>,
                        constellation_chan: ConstellationChan,
                        compositor_chan: CompositorChan,
@@ -95,6 +98,7 @@ impl Pipeline {
         chan.send(AttachLayoutMsg(new_layout_info));
 
         Pipeline::new(id,
+                      Some(parent_id),
                       subpage_id,
                       script_pipeline.script_chan.clone(),
                       layout_chan,
@@ -104,6 +108,7 @@ impl Pipeline {
     }
 
     pub fn create(id: PipelineId,
+                  parent_id: Option<PipelineId>,
                   subpage_id: Option<SubpageId>,
                   constellation_chan: ConstellationChan,
                   compositor_chan: CompositorChan,
@@ -119,6 +124,7 @@ impl Pipeline {
         let (render_shutdown_chan, render_shutdown_port) = channel();
         let (layout_shutdown_chan, layout_shutdown_port) = channel();
         let pipeline = Pipeline::new(id,
+                                     parent_id,
                                      subpage_id,
                                      script_chan.clone(),
                                      layout_chan.clone(),
@@ -167,6 +173,7 @@ impl Pipeline {
     }
 
     pub fn new(id: PipelineId,
+               parent_id: Option<PipelineId>,
                subpage_id: Option<SubpageId>,
                script_chan: ScriptChan,
                layout_chan: LayoutChan,
@@ -176,6 +183,7 @@ impl Pipeline {
                -> Pipeline {
         Pipeline {
             id: id,
+            parent_id: parent_id,
             subpage_id: subpage_id,
             script_chan: script_chan,
             layout_chan: layout_chan,
@@ -225,6 +233,7 @@ impl Pipeline {
     pub fn to_sendable(&self) -> CompositionPipeline {
         CompositionPipeline {
             id: self.id.clone(),
+            parent_id: self.parent_id.clone(),
             script_chan: self.script_chan.clone(),
             render_chan: self.render_chan.clone(),
         }

@@ -421,6 +421,7 @@ impl Constellation {
 
         let new_id = self.get_next_pipeline_id();
         let pipeline = Pipeline::create(new_id,
+                                        None, // XXX mbrubeck should get the parent ID
                                         subpage_id,
                                         self.chan.clone(),
                                         self.compositor_chan.clone(),
@@ -448,6 +449,7 @@ impl Constellation {
 
     fn handle_init_load(&mut self, url: Url) {
         let pipeline = Pipeline::create(self.get_next_pipeline_id(),
+                                        None,
                                         None,
                                         self.chan.clone(),
                                         self.compositor_chan.clone(),
@@ -581,6 +583,7 @@ impl Constellation {
             debug!("Constellation: loading same-origin iframe at {:?}", url);
             // Reuse the script task if same-origin url's
             Pipeline::with_script(next_pipeline_id,
+                                  source_pipeline_id,
                                   Some(subpage_id),
                                   self.chan.clone(),
                                   self.compositor_chan.clone(),
@@ -592,6 +595,7 @@ impl Constellation {
             debug!("Constellation: loading cross-origin iframe at {:?}", url);
             // Create a new script task if not same-origin url's
             Pipeline::create(next_pipeline_id,
+                             Some(source_pipeline_id),
                              Some(subpage_id),
                              self.chan.clone(),
                              self.compositor_chan.clone(),
@@ -643,10 +647,15 @@ impl Constellation {
         // changes would be overriden by changing the subframe associated with source_id.
 
         let parent = source_frame.parent.clone();
+        let parent_id = match parent.borrow().clone() {
+            Some(parent) => Some(parent.id),
+            None => None,
+        };
         let subpage_id = source_frame.pipeline.subpage_id;
         let next_pipeline_id = self.get_next_pipeline_id();
 
         let pipeline = Pipeline::create(next_pipeline_id,
+                                        parent_id,
                                         subpage_id,
                                         self.chan.clone(),
                                         self.compositor_chan.clone(),
