@@ -113,6 +113,7 @@ pub enum GraphicsContext {
 
 pub struct RenderTask<C> {
     id: PipelineId,
+    parent_id: Option<PipelineId>,
     port: Receiver<Msg>,
     compositor: C,
     constellation_chan: ConstellationChan,
@@ -152,6 +153,7 @@ macro_rules! native_graphics_context(
 fn initialize_layers<C:RenderListener>(
                      compositor: &mut C,
                      pipeline_id: PipelineId,
+                     parent_id: Option<PipelineId>,
                      epoch: Epoch,
                      render_layers: &[RenderLayer]) {
     let metadata = render_layers.iter().map(|render_layer| {
@@ -162,11 +164,12 @@ fn initialize_layers<C:RenderListener>(
             scroll_policy: render_layer.scroll_policy,
         }
     }).collect();
-    compositor.initialize_layers_for_pipeline(pipeline_id, metadata, epoch);
+    compositor.initialize_layers_for_pipeline(pipeline_id, parent_id, metadata, epoch);
 }
 
 impl<C: RenderListener + Send> RenderTask<C> {
     pub fn create(id: PipelineId,
+                  parent_id: Option<PipelineId>,
                   port: Receiver<Msg>,
                   compositor: C,
                   constellation_chan: ConstellationChan,
@@ -187,6 +190,7 @@ impl<C: RenderListener + Send> RenderTask<C> {
                 // FIXME: rust/#5967
                 let mut render_task = RenderTask {
                     id: id,
+                    parent_id: parent_id,
                     port: port,
                     compositor: compositor,
                     constellation_chan: constellation_chan,
@@ -245,6 +249,7 @@ impl<C: RenderListener + Send> RenderTask<C> {
 
                     initialize_layers(&mut self.compositor,
                                       self.id,
+                                      self.parent_id,
                                       self.epoch,
                                       self.render_layers.as_slice());
                 }
@@ -271,6 +276,7 @@ impl<C: RenderListener + Send> RenderTask<C> {
                         self.epoch.next();
                         initialize_layers(&mut self.compositor,
                                           self.id,
+                                          self.parent_id,
                                           self.epoch,
                                           self.render_layers.as_slice());
                     }

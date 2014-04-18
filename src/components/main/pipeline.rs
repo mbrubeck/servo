@@ -68,6 +68,7 @@ impl Pipeline {
         };
 
         RenderTask::create(id,
+                           Some(parent_id),
                            render_port,
                            compositor_chan.clone(),
                            constellation_chan.clone(),
@@ -149,6 +150,7 @@ impl Pipeline {
                            window_size);
 
         RenderTask::create(id,
+                           parent_id,
                            render_port,
                            compositor_chan.clone(),
                            constellation_chan.clone(),

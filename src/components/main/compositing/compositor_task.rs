@@ -81,6 +81,7 @@ impl RenderListener for CompositorChan {
 
     fn initialize_layers_for_pipeline(&self,
                                       pipeline_id: PipelineId,
+                                      parent_id: Option<PipelineId>,
                                       metadata: ~[LayerMetadata],
                                       epoch: Epoch) {
         // FIXME(#2004, pcwalton): This assumes that the first layer determines the page size, and

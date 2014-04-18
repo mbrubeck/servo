@@ -126,6 +126,7 @@ pub trait RenderListener {
     /// creating and/or destroying render layers as necessary.
     fn initialize_layers_for_pipeline(&self,
                                       pipeline_id: PipelineId,
+                                      parent_pipeline_id: Option<PipelineId>,
                                       metadata: ~[LayerMetadata],
                                       epoch: Epoch);
 
