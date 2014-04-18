@@ -84,6 +84,7 @@ impl RenderListener for CompositorChan {
                                       parent_id: Option<PipelineId>,
                                       metadata: ~[LayerMetadata],
                                       epoch: Epoch) {
+        debug!("initialize_layers_for_pipeline {:?}", pipeline_id);
         // FIXME(#2004, pcwalton): This assumes that the first layer determines the page size, and
         // that all other layers are immediate children of it. This is sufficient to handle
         // `position: fixed` but will not be sufficient to handle `overflow: scroll` or transforms.
@@ -96,6 +97,7 @@ impl RenderListener for CompositorChan {
             let rect = Rect(origin, size);
             if first {
                 self.chan.send(CreateRootCompositorLayerIfNecessary(pipeline_id,
+                                                                    parent_id,
                                                                     metadata.id,
                                                                     size));
                 first = false
@@ -166,7 +168,7 @@ pub enum Msg {
 
     /// Tells the compositor to create the root layer for a pipeline if necessary (i.e. if no layer
     /// with that ID exists).
-    CreateRootCompositorLayerIfNecessary(PipelineId, LayerId, Size2D<f32>),
+    CreateRootCompositorLayerIfNecessary(PipelineId, Option<PipelineId>, LayerId, Size2D<f32>),
     /// Tells the compositor to create a descendant layer for a pipeline if necessary (i.e. if no
     /// layer with that ID exists).
     CreateDescendantCompositorLayerIfNecessary(PipelineId, LayerId, Rect<f32>, ScrollPolicy),

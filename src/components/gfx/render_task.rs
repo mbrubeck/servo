@@ -156,6 +156,7 @@ fn initialize_layers<C:RenderListener>(
                      parent_id: Option<PipelineId>,
                      epoch: Epoch,
                      render_layers: &[RenderLayer]) {
+    debug!("render_task::initialize_layers {:?}", pipeline_id);
     let metadata = render_layers.iter().map(|render_layer| {
         LayerMetadata {
             id: render_layer.id,
@@ -237,6 +238,7 @@ impl<C: RenderListener + Send> RenderTask<C> {
         loop {
             match self.port.recv() {
                 RenderMsg(render_layers) => {
+                    debug!("render_task: RenderMsg {:?} {}", self.id, render_layers.len());
                     self.epoch.next();
                     self.render_layers = render_layers;
 
@@ -254,6 +256,7 @@ impl<C: RenderListener + Send> RenderTask<C> {
                                       self.render_layers.as_slice());
                 }
                 ReRenderMsg(tiles, scale, layer_id, epoch) => {
+                    debug!("render_task: ReRenderMsg {:?}", self.id);
                     if self.epoch == epoch {
                         self.render(tiles, scale, layer_id);
                     } else {
@@ -267,11 +270,13 @@ impl<C: RenderListener + Send> RenderTask<C> {
                     }
                 }
                 PaintPermissionGranted => {
+                    debug!("RenderTask PaintPermissionGranted {:?}", self.id);
                     self.paint_permission = true;
 
                     // Here we assume that the main layer—the layer responsible for the page size—
                     // is the first layer. This is a pretty fragile assumption. It will be fixed
                     // once we use the layers-based scrolling infrastructure for all scrolling.
+                    debug!("RenderTask {:?} has {} layers", self.id, self.render_layers.len());
                     if self.render_layers.len() > 1 {
                         self.epoch.next();
                         initialize_layers(&mut self.compositor,

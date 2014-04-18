@@ -84,6 +84,22 @@ pub struct SendableChildFrameTree {
     pub rect: Option<Rect<f32>>,
 }
 
+impl SendableFrameTree {
+    pub fn find<'a>(&'a self, id: PipelineId) -> Option<&'a SendableFrameTree> {
+        if self.pipeline.id == id {
+            return Some(self)
+        }
+        for child in self.children.iter() {
+            let SendableChildFrameTree { frame_tree: ref tree, .. } = *child;
+            match tree.find(id) {
+                Some(frame_tree) => return Some(frame_tree),
+                None => (),
+            }
+        }
+        None
+    }
+}
+
 enum ReplaceResult {
     ReplacedNode(Rc<FrameTree>),
     OriginalNode(Rc<FrameTree>),
@@ -728,13 +744,10 @@ impl Constellation {
         // when the message originates from a pending frame or the current frame.
 
         for current_frame in self.current_frame().iter() {
-            // Messages originating in the current frame are not navigations;
-            // TODO(tkuehn): In fact, this kind of message might be provably
-            // impossible to occur.
+            // Messages originating in the current frame are not navigations.
+            // This kind of message can happen when an iframe is ready to render.
             if current_frame.contains(pipeline_id) {
-                for frame in current_frame.iter() {
-                    frame.pipeline.grant_paint_permission();
-                }
+                self.set_ids(current_frame);
                 return;
             }
         }

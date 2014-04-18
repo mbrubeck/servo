@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use constellation::SendableFrameTree;
-use compositing::compositor_layer::CompositorLayer;
+use compositing::compositor_layer::{CompositorLayer, CompositorLayerChild};
 use compositing::*;
 use pipeline::CompositionPipeline;
 use platform::{Application, Window};
@@ -54,6 +54,8 @@ pub struct IOCompositor {
     /// The root ContainerLayer.
     pub root_layer: Rc<ContainerLayer>,
 
+    frame_tree: Option<SendableFrameTree>,
+
     /// The root pipeline.
     pub root_pipeline: Option<CompositionPipeline>,
 
@@ -99,7 +101,7 @@ pub struct IOCompositor {
     pub opts: Opts,
 
     /// The root CompositorLayer
-    pub compositor_layer: Option<CompositorLayer>,
+    pub compositor_layer: Option<~CompositorLayer>,
 
     /// The channel on which messages can be sent to the constellation.
     pub constellation_chan: ConstellationChan,
@@ -135,6 +137,7 @@ impl IOCompositor {
             opts: opts,
             context: rendergl::init_render_context(),
             root_layer: root_layer.clone(),
+            frame_tree: None,
             root_pipeline: None,
             scene: Scene(ContainerLayerKind(root_layer), window_size, identity()),
             window_size: Size2D(window_size.width as uint, window_size.height as uint),
@@ -270,9 +273,10 @@ impl IOCompositor {
                     chan.send(Some(azure_hl::current_graphics_metadata()));
                 }
 
-                (Data(CreateRootCompositorLayerIfNecessary(pipeline_id, layer_id, size)),
+                (Data(CreateRootCompositorLayerIfNecessary(pipeline_id, parent_id, layer_id, size)),
                  false) => {
-                    self.create_root_compositor_layer_if_necessary(pipeline_id, layer_id, size);
+                    self.create_root_compositor_layer_if_necessary(pipeline_id, parent_id,
+                                                                   layer_id, size);
                 }
 
                 (Data(CreateDescendantCompositorLayerIfNecessary(pipeline_id,
@@ -337,9 +341,11 @@ impl IOCompositor {
                frame_tree: SendableFrameTree,
                response_chan: Sender<()>,
                new_constellation_chan: ConstellationChan) {
+        debug!("set_ids {:?}", frame_tree.pipeline.id);
         response_chan.send(());
 
         self.root_pipeline = Some(frame_tree.pipeline.clone());
+        self.frame_tree = Some(frame_tree);
 
         // Initialize the new constellation channel by sending it the root window size.
         let window_size = self.window.size();
@@ -353,53 +359,106 @@ impl IOCompositor {
         self.constellation_chan = new_constellation_chan;
     }
 
+    /// Create the root layer for a pipeline, unless one already exists.
     fn create_root_compositor_layer_if_necessary(&mut self,
-                                                 id: PipelineId,
+                                                 pipeline_id: PipelineId,
+                                                 parent_id: Option<PipelineId>,
                                                  layer_id: LayerId,
                                                  size: Size2D<f32>) {
-        let (root_pipeline, root_layer_id) = match self.compositor_layer {
-            Some(ref compositor_layer) if compositor_layer.pipeline.id == id => {
-                (compositor_layer.pipeline.clone(), compositor_layer.id_of_first_child())
+        debug!("create root {:?} {:?} {:?} {:?}", pipeline_id, parent_id, layer_id, size);
+        let new_layer = {
+
+        // Find the current layer for this pipeline.
+        let existing_layer_for_pipeline = match self.compositor_layer {
+            Some(ref layer) => layer.find(pipeline_id),
+            None => None
+        };
+        for layer in existing_layer_for_pipeline.iter() {
+            if layer.pipeline.id == pipeline_id && layer.id == layer_id {
+                // We already have a matching layer; our work here is done.
+                return;
             }
-            _ => {
-                match self.root_pipeline {
-                    Some(ref root_pipeline) => (root_pipeline.clone(), LayerId::null()),
-                    None => fail!("Compositor: Received new layer without initialized pipeline"),
-                }
-            }
+        }
+
+        // Create a new layer.
+        let pipeline = match self.frame_tree {
+            Some(ref frame_tree) => match frame_tree.find(pipeline_id) {
+                Some(matching_frame_tree) => matching_frame_tree.pipeline.clone(),
+                None => fail!("Received new layer without matching pipeline")
+            },
+            None => fail!("Received new layer without initialized pipeline")
         };
 
-        if layer_id != root_layer_id {
-            let root_pipeline_id = root_pipeline.id;
-            let mut new_layer = CompositorLayer::new_root(root_pipeline,
-                                                          size,
-                                                          self.opts.tile_size,
-                                                          self.opts.cpu_painting);
+        let mut new_layer = ~CompositorLayer::new_root(pipeline,
+                                                       size,
+                                                       self.opts.tile_size,
+                                                       self.opts.cpu_painting);
 
-            let first_child = self.root_layer.first_child.borrow().clone();
-            match first_child {
-                None => {}
-                Some(old_layer) => {
-                    ContainerLayer::remove_child(self.root_layer.clone(), old_layer)
+        // Find the right place in the layer tree for the new layer.
+        let container_layer = match parent_id {
+            Some(parent_id) => {
+                match self.compositor_layer {
+                    Some(ref root) => match root.find(parent_id) {
+                        Some(parent) => parent.root_layer.clone(),
+                        None => fail!("Received a sub-layer without a matching parent")
+                    },
+                    None => fail!("Adding a sub-layer without a root layer")
                 }
+            },
+            None => self.root_layer.clone()
+        };
+
+        // Replace the existing child of the parent ContainerLayer.
+        let old_child = container_layer.first_child.borrow().clone();
+        match old_child {
+            Some(old_child) => ContainerLayer::remove_child(container_layer.clone(), old_child),
+            None => ()
+        }
+
+        assert!(new_layer.add_child_if_necessary(container_layer.clone(),
+                                                 pipeline_id,
+                                                 new_layer.id,
+                                                 layer_id,
+                                                 Rect(Point2D(0f32, 0f32), size),
+                                                 size,
+                                                 Scrollable));
+
+        ContainerLayer::add_child_start(container_layer.clone(),
+                                        ContainerLayerKind(new_layer.root_layer.clone()));
+
+        new_layer
+        };
+
+        match parent_id {
+            Some(parent_id) => {
+                // Insert the new layer into its parent, replacing an existing layer if necessary.
+                match self.compositor_layer {
+                    Some(ref mut layer) => {
+                        layer.delete(&self.graphics_context, pipeline_id);
+                        match layer.find_mut(parent_id) {
+                            Some(parent) => {
+                                let new_layer_container = new_layer.root_layer.clone();
+                                parent.children.push(CompositorLayerChild {
+                                    child: new_layer,
+                                    container: new_layer_container,
+                                });
+                            },
+                            None => fail!("No matching parent layer found")
+                        }
+                    }
+                    None => ()
+                }
+            },
+            None => {
+                // Drop the old root layer and use this as the new root layer.
+                match self.compositor_layer {
+                    Some(ref mut layer) => {
+                        layer.clear_all_tiles();
+                    }
+                    None => ()
+                }
+                self.compositor_layer = Some(new_layer);
             }
-
-            assert!(new_layer.add_child_if_necessary(self.root_layer.clone(),
-                                                     root_pipeline_id,
-                                                     new_layer.id,
-                                                     layer_id,
-                                                     Rect(Point2D(0f32, 0f32), size),
-                                                     size,
-                                                     Scrollable));
-
-            ContainerLayer::add_child_start(self.root_layer.clone(),
-                                            ContainerLayerKind(new_layer.root_layer.clone()));
-
-            // Release all tiles from the layer before dropping it.
-            for layer in self.compositor_layer.mut_iter() {
-                layer.clear_all_tiles();
-            }
-            self.compositor_layer = Some(new_layer);
         }
 
         self.ask_for_tiles();
@@ -458,6 +517,7 @@ impl IOCompositor {
                            pipeline_id: PipelineId,
                            layer_id: LayerId,
                            new_rect: Rect<f32>) {
+        debug!("set_layer_clip_rect {:?} {:?}", pipeline_id, layer_id);
         let ask: bool = match self.compositor_layer {
             Some(ref mut layer) => {
                 assert!(layer.set_clipping_rect(pipeline_id, layer_id, new_rect));

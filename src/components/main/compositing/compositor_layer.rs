@@ -189,6 +189,34 @@ impl CompositorLayer {
         }
     }
 
+    pub fn find<'a>(&'a self, id: PipelineId) -> Option<&'a CompositorLayer> {
+        if self.pipeline.id == id {
+            return Some(self)
+        }
+        for child in self.children.iter() {
+            let CompositorLayerChild { child: ref layer, .. } = *child;
+            match layer.find(id) {
+                Some(layer) => return Some(layer),
+                None => (),
+            }
+        }
+        None
+    }
+
+    pub fn find_mut<'a>(&'a mut self, id: PipelineId) -> Option<&'a mut CompositorLayer> {
+        if self.pipeline.id == id {
+            return Some(self)
+        }
+        for child in self.children.mut_iter() {
+            let CompositorLayerChild { child: ref mut layer, .. } = *child;
+            match layer.find_mut(id) {
+                Some(layer) => return Some(layer),
+                None => (),
+            }
+        }
+        None
+    }
+
     /// Creates a new root `CompositorLayer` bound to a composition pipeline with an optional page
     /// size. If no page size is given, the layer is initially hidden and initialized without a
     /// quadtree.
@@ -469,7 +497,7 @@ impl CompositorLayer {
                         }
                     }
                 }
-                None => fail!("child layer not clipped!"),
+                None => false //fail!("child layer not clipped!"),
             }
         };
         self.children.mut_iter().filter(|x| !x.child.hidden)
@@ -489,6 +517,7 @@ impl CompositorLayer {
                              -> bool {
         debug!("compositor_layer: starting set_clipping_rect()");
         match self.children.iter().position(|kid_holder| {
+                debug!("found {:?} {:?}", kid_holder.child.pipeline.id, kid_holder.child.id);
                 pipeline_id == kid_holder.child.pipeline.id &&
                 layer_id == kid_holder.child.id
             }) {
@@ -881,7 +910,9 @@ impl CompositorLayer {
                 // Send back all tiles to renderer.
                 child.get_mut_ref().child.clear_all_tiles();
 
-                self.build_layer_tree(graphics_context);
+                if self.id != LayerId::null() { // XXX
+                    self.build_layer_tree(graphics_context);
+                }
                 true
             }
             None => {
