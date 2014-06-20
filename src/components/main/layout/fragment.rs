@@ -1395,9 +1395,9 @@ impl Fragment {
         }
     }
 
-    /// Returns true if the contents should be clipped (i.e. if `overflow` is `hidden`).
+    /// Returns true if the contents should be clipped (i.e. if `overflow` is not `visible`).
     pub fn needs_clip(&self) -> bool {
-        self.style().get_box().overflow == overflow::hidden
+        self.style().get_box().overflow != overflow::visible
     }
 
     /// A helper function to return a debug string describing the side offsets for one of the rect
