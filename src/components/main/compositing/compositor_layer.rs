@@ -23,6 +23,7 @@ use script::dom::event::{ClickEvent, MouseDownEvent, MouseMoveEvent, MouseUpEven
 use script::script_task::{ScriptChan, SendEventMsg};
 use servo_msg::compositor_msg::{Epoch, FixedPosition, LayerBuffer, LayerBufferSet, LayerId};
 use servo_msg::compositor_msg::{ScrollPolicy, Tile};
+use servo_msg::compositor_msg::{DoesntWantScrollEvents, WantsScrollEvents, WantsScrollEventsFlag};
 use servo_msg::constellation_msg::PipelineId;
 use servo_util::geometry::PagePx;
 use std::rc::Rc;
@@ -120,12 +121,6 @@ impl MaybeQuadtree {
             NoTree(tile_size, _) => tile_size,
         }
     }
-}
-
-#[deriving(Eq, Clone)]
-pub enum WantsScrollEventsFlag {
-    WantsScrollEvents,
-    DoesntWantScrollEvents,
 }
 
 fn create_container_layer_from_rect(rect: Rect<f32>) -> Rc<ContainerLayer> {

@@ -41,7 +41,7 @@ use script::layout_interface::{ContentChangedDocumentDamage, LayoutChan, Msg, Pr
 use script::layout_interface::{QueryMsg, ReapLayoutDataMsg, Reflow, UntrustedNodeAddress};
 use script::layout_interface::{ReflowForDisplay, ReflowMsg};
 use script::script_task::{ReflowCompleteMsg, ScriptChan, SendEventMsg};
-use servo_msg::compositor_msg::Scrollable;
+use servo_msg::compositor_msg::{Scrollable, WantsScrollEvents};
 use servo_msg::constellation_msg::{ConstellationChan, PipelineId, Failure, FailureMsg};
 use servo_net::image_cache_task::{ImageCacheTask, ImageResponseMsg};
 use servo_net::local_image_cache::{ImageResponder, LocalImageCache};
@@ -710,6 +710,7 @@ impl LayoutTask {
                     position: Rect(Point2D(0u, 0u), root_size),
                     background_color: color,
                     scroll_policy: Scrollable,
+                    wants_scroll_events: WantsScrollEvents,
                 };
 
                 self.display_list = Some(display_list.clone());

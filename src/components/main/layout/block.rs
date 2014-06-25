@@ -38,6 +38,7 @@ use gfx::display_list::{FloatStackingLevel, PositionedDescendantStackingLevel};
 use gfx::display_list::{RootOfStackingContextLevel};
 use gfx::render_task::RenderLayer;
 use servo_msg::compositor_msg::{FixedPosition, LayerId, Scrollable};
+use servo_msg::compositor_msg::{DoesntWantScrollEvents, WantsScrollEvents};
 use servo_util::geometry::Au;
 use servo_util::geometry;
 use std::fmt;
@@ -1266,6 +1267,13 @@ impl BlockFlow {
         } else {
             Scrollable
         };
+
+        let style = self.fragment.style();
+        let wants_scroll_events = match style.get_box().overflow {
+            overflow::visible | overflow::hidden => DoesntWantScrollEvents,
+            _ => WantsScrollEvents,
+        };
+
         let display_list = mem::replace(&mut self.base.display_list, DisplayList::new());
         let new_layer = RenderLayer {
             id: self.layer_id(0),
@@ -1273,6 +1281,7 @@ impl BlockFlow {
             position: Rect(origin, size),
             background_color: color::rgba(255.0, 255.0, 255.0, 0.0),
             scroll_policy: scroll_policy,
+            wants_scroll_events: wants_scroll_events,
         };
         self.base.layers.push_back(new_layer)
     }

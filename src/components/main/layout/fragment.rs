@@ -1475,13 +1475,13 @@ impl ChildDisplayListAccumulator {
            -> ChildDisplayListAccumulator {
         ChildDisplayListAccumulator {
             clip_display_item: match style.get_box().overflow {
-                overflow::hidden => {
+                overflow::visible => None,
+                _ => {
                     Some(box ClipDisplayItem {
                         base: BaseDisplayItem::new(bounds, node, level),
                         children: DisplayList::new(),
                     })
-                }
-                _ => None,
+                },
             }
         }
     }

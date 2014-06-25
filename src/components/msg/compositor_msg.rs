@@ -106,6 +106,12 @@ pub enum ScrollPolicy {
     FixedPosition,
 }
 
+#[deriving(Eq, Clone)]
+pub enum WantsScrollEventsFlag {
+    WantsScrollEvents,
+    DoesntWantScrollEvents,
+}
+
 /// All layer-specific information that the painting task sends to the compositor other than the
 /// buffer contents of the layer itself.
 pub struct LayerMetadata {
@@ -117,6 +123,8 @@ pub struct LayerMetadata {
     pub background_color: Color,
     /// The scrolling policy of this layer.
     pub scroll_policy: ScrollPolicy,
+    /// TODO
+    pub wants_scroll_events: WantsScrollEventsFlag,
 }
 
 /// The interface used by the renderer to acquire draw targets for each render frame and

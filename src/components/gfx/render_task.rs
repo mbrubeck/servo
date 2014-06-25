@@ -20,6 +20,7 @@ use layers::platform::surface::{NativeSurfaceMethods};
 use layers;
 use servo_msg::compositor_msg::{Epoch, IdleRenderState, LayerBuffer, LayerBufferSet, LayerId};
 use servo_msg::compositor_msg::{LayerMetadata, RenderListener, RenderingRenderState, ScrollPolicy};
+use servo_msg::compositor_msg::WantsScrollEventsFlag;
 use servo_msg::constellation_msg::{ConstellationChan, Failure, FailureMsg, PipelineId};
 use servo_msg::constellation_msg::{RendererReadyMsg};
 use servo_msg::platform::surface::NativeSurfaceAzureMethods;
@@ -45,6 +46,8 @@ pub struct RenderLayer {
     pub background_color: Color,
     /// The scrolling policy of this layer.
     pub scroll_policy: ScrollPolicy,
+    /// TODO
+    pub wants_scroll_events: WantsScrollEventsFlag,
 }
 
 pub enum Msg {
@@ -155,6 +158,7 @@ fn initialize_layers<C:RenderListener>(
             position: render_layer.position,
             background_color: render_layer.background_color,
             scroll_policy: render_layer.scroll_policy,
+            wants_scroll_events: render_layer.wants_scroll_events,
         }
     }).collect();
     compositor.initialize_layers_for_pipeline(pipeline_id, metadata, epoch);
