@@ -40,3 +40,12 @@ class MachCommands(CommandBase):
     def build_tests(self):
         self.ensure_bootstrapped()
         subprocess.check_call(["cargo", "test", "--no-run"], env=self.build_env())
+
+    @Command('cargo',
+             description='Run cargo',
+             category='build',
+             allow_all_args=True)
+    @CommandArgument('params', default=None, nargs='...',
+                     help="Command-line arguments to be passed through to cargo")
+    def run(self, params):
+        subprocess.check_call(["cargo"] + params, env=self.build_env())
