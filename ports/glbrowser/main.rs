@@ -1,8 +1,12 @@
 extern crate azure;
 extern crate servo;
 extern crate util;
+extern crate glfw;
+
+use glfw::Context;
 
 fn main() {
+    /*
     let opts = util::opts::Opts {
         urls: vec!("http://limpet.net/".to_string()),
         render_backend: azure::azure_hl::SkiaBackend,
@@ -25,4 +29,16 @@ fn main() {
         devtools_server: false,
     };
     servo::run(opts);
+    */
+
+    let glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    let (window, events) = glfw.create_window(300, 300, "Hello this is window", glfw::Windowed)
+        .expect("Failed to create GLFW window.");
+
+    window.set_key_polling(true);
+    window.make_current();
+
+    while !window.should_close() {
+        glfw.poll_events();
+    }
 }
