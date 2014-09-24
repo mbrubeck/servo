@@ -217,23 +217,26 @@ impl CompositorTask {
         NativeCompositingGraphicsContext::new()
     }
 
-    pub fn create(opts: Opts,
-                  view: Box<windowing::View>,
+    pub fn create<'a>(opts: Opts,
+                  view: Box<windowing::View + 'a>,
                   port: Receiver<Msg>,
                   constellation_chan: ConstellationChan,
                   time_profiler_chan: TimeProfilerChan,
-                  memory_profiler_chan: MemoryProfilerChan) {
+                  memory_profiler_chan: MemoryProfilerChan) -> compositor::IOCompositor<'a> {
 
         let compositor = CompositorTask::new(opts.headless);
 
+        /*
         match compositor.mode {
             Windowed => {
+            */
                 compositor::IOCompositor::create(view,
                                                  opts,
                                                  port,
                                                  constellation_chan.clone(),
                                                  time_profiler_chan,
                                                  memory_profiler_chan)
+            /*
             }
             Headless => {
                 headless::NullCompositor::create(port,
@@ -242,5 +245,6 @@ impl CompositorTask {
                                                  memory_profiler_chan)
             }
         };
+        */
     }
 }

@@ -84,7 +84,7 @@ pub extern "C" fn android_start(argc: int, argv: *const *const u8) -> int {
 }
 
 #[cfg(not(test))]
-pub fn run(opts: opts::Opts, view: Box<compositing::windowing::View>) {
+pub fn run<'a>(opts: opts::Opts, view: Box<compositing::windowing::View + 'a>) -> (green::SchedPool, compositing::compositor::IOCompositor<'a>) {
     ::servo_util::opts::set_experimental_enabled(opts.enable_experimental);
     RegisterBindings::RegisterProxyHandlers();
 
@@ -151,13 +151,14 @@ pub fn run(opts: opts::Opts, view: Box<compositing::windowing::View>) {
     let constellation_chan = result_port.recv();
 
     debug!("preparing to enter main loop");
-    CompositorTask::create(opts,
+    let compositor = CompositorTask::create(opts,
                            view,
                            compositor_port,
                            constellation_chan,
                            time_profiler_chan,
                            memory_profiler_chan);
 
-    pool.shutdown();
+    (pool, compositor)
+    // XXX pool.shutdown();
 }
 

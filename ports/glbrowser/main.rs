@@ -74,9 +74,14 @@ fn main() {
     window.make_current();
     let view = GLBrowserView { glfw_window: window };
 
-    servo::run(opts, box view);
+    let (pool, mut compositor) = servo::run(opts, box view);
 
     loop {
+        compositor.spin_event_loop();
         glfw.poll_events();
+        // TODO: break on exit
     }
+
+    compositor.shutdown();
+    pool.shutdown();
 }

@@ -186,7 +186,7 @@ impl<'a> IOCompositor<'a> {
                   port: Receiver<Msg>,
                   constellation_chan: ConstellationChan,
                   time_profiler_chan: TimeProfilerChan,
-                  memory_profiler_chan: MemoryProfilerChan) {
+                  memory_profiler_chan: MemoryProfilerChan) -> IOCompositor<'a> {
         let mut compositor = IOCompositor::new(view,
                                                opts,
                                                port,
@@ -197,14 +197,15 @@ impl<'a> IOCompositor<'a> {
 
         // Starts the compositor, which listens for messages on the specified port.
         compositor.run();
+        compositor
     }
 
-    fn run (&mut self) {
+    fn run (&self) {
         // Tell the constellation about the initial window size.
         self.send_window_size();
+    }
 
-        // Enter the main event loop.
-        while self.shutdown_state != FinishedShuttingDown {
+    pub fn spin_event_loop(&mut self) {
             // Check for new messages coming from the rendering task.
             self.handle_message();
 
@@ -212,9 +213,8 @@ impl<'a> IOCompositor<'a> {
                 // We have exited the compositor and passing window
                 // messages to script may crash.
                 debug!("Exiting the compositor due to a request from script.");
-                break;
+                // XXX break;
             }
-
             // Check for messages coming from the windowing system.
             /* XXX
             let msg = self.window.recv();
@@ -235,9 +235,9 @@ impl<'a> IOCompositor<'a> {
                 self.scene.mark_layer_contents_as_changed_recursively();
                 self.send_buffer_requests_for_all_layers();
             }
+    }
 
-        }
-
+    pub fn shutdown(&mut self) {
         // Clear out the compositor layers so that painting tasks can destroy the buffers.
         match self.scene.root {
             None => {}
