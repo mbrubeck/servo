@@ -3,24 +3,12 @@ name = "glbrowser"
 version = "0.0.1"
 dependencies = [
  "azure 0.1.0 (git+https://github.com/servo/rust-azure#b357751c04a89a87e6ef1f0cebe5f20957dd112d)",
- "core_graphics 0.1.0 (git+https://github.com/servo/rust-core-graphics#6a9919f8a912cc67571b891ba198d5325964a104)",
- "core_text 0.1.0 (git+https://github.com/servo/rust-core-text#1ad11072b31657eeccaf4879c6e98723d488bd3d)",
- "devtools 0.0.1",
  "geom 0.1.0 (git+https://github.com/servo/rust-geom#50a294fd997f0c6eb43e9a58ad6e227fdc2a4692)",
  "gfx 0.0.1",
  "glfw 0.0.1 (git+https://github.com/servo/glfw-rs?ref=servo#955dbe919870b0536f79123232d87c0efe3c552e)",
- "glut 0.0.1 (git+https://github.com/servo/rust-glut#01af0162ea0322ad1a40d6adb023a39813605949)",
- "js 0.1.0 (git+https://github.com/servo/rust-mozjs#41fb0d80a5ed5614ca13a120cdb3281e599d4e04)",
  "layers 0.1.0 (git+https://github.com/servo/rust-layers#ef89918471815dfced7aaf2f1594d5469f03eab7)",
- "msg 0.0.1",
- "net 0.0.1",
- "opengles 0.1.0 (git+https://github.com/servo/rust-opengles#6776e9c07feb149d34b087039ecf6b2c143e3afc)",
- "plugins 0.0.1",
- "png 0.1.0 (git+https://github.com/servo/rust-png#74418ffbf20e94b0d3bed4a9d004062a13342c79)",
  "script 0.0.1",
  "servo 0.0.1",
- "stb_image 0.1.0 (git+https://github.com/servo/rust-stb-image#f5022de4ad6bb474a03493d1f274dde9b0f1af0c)",
- "style 0.0.1",
  "util 0.0.1",
 ]
 

@@ -12,6 +12,7 @@ use events;
 use pipeline::CompositionPipeline;
 use platform::{Application, Window};
 use windowing;
+use windowing::View;
 use windowing::{FinishedWindowEvent, IdleWindowEvent, LoadUrlWindowEvent, MouseWindowClickEvent};
 use windowing::{MouseWindowEvent, MouseWindowEventClass, MouseWindowMouseDownEvent};
 use windowing::{MouseWindowMouseUpEvent, MouseWindowMoveEventClass, NavigationWindowEvent};
@@ -53,9 +54,9 @@ use time::precise_time_s;
 use url::Url;
 
 
-pub struct IOCompositor {
+pub struct IOCompositor<'a> {
     /// The application window.
-    window: Rc<Window>,
+    view: Box<View+'a>,
 
     /// The port on which we receive messages.
     port: Receiver<Msg>,
@@ -135,25 +136,25 @@ enum ShutdownState {
     FinishedShuttingDown,
 }
 
-impl IOCompositor {
-    fn new(app: &Application,
+impl<'a> IOCompositor<'a> {
+    fn new(view: Box<View + 'a>,
                opts: Opts,
                port: Receiver<Msg>,
                constellation_chan: ConstellationChan,
                time_profiler_chan: TimeProfilerChan,
-               memory_profiler_chan: MemoryProfilerChan) -> IOCompositor {
-        let window: Rc<Window> = WindowMethods::new(app, opts.output_file.is_none());
+               memory_profiler_chan: MemoryProfilerChan) -> IOCompositor<'a> {
+        //let window: Rc<Window> = WindowMethods::new(app, opts.output_file.is_none());
 
         // Create an initial layer tree.
         //
         // TODO: There should be no initial layer tree until the renderer creates one from the
         // display list. This is only here because we don't have that logic in the renderer yet.
-        let window_size = window.framebuffer_size();
-        let hidpi_factor = window.hidpi_factor();
+        let window_size = view.framebuffer_size();
+        let hidpi_factor = view.hidpi_factor();
 
         let show_debug_borders = opts.show_debug_borders;
         IOCompositor {
-            window: window,
+            view: view,
             port: port,
             opts: opts,
             context: rendergl::RenderContext::new(CompositorTask::create_graphics_context(),
@@ -180,13 +181,13 @@ impl IOCompositor {
         }
     }
 
-    pub fn create(app: &Application,
+    pub fn create(view: Box<View>,
                   opts: Opts,
                   port: Receiver<Msg>,
                   constellation_chan: ConstellationChan,
                   time_profiler_chan: TimeProfilerChan,
                   memory_profiler_chan: MemoryProfilerChan) {
-        let mut compositor = IOCompositor::new(app,
+        let mut compositor = IOCompositor::new(view,
                                                opts,
                                                port,
                                                constellation_chan,
@@ -215,8 +216,10 @@ impl IOCompositor {
             }
 
             // Check for messages coming from the windowing system.
+            /* XXX
             let msg = self.window.recv();
             self.handle_window_message(msg);
+            */
 
             // If asked to recomposite and renderer has run at least once
             if self.recomposite && self.composite_ready {
@@ -343,7 +346,7 @@ impl IOCompositor {
         self.ready_states.insert_or_update_with(pipeline_id,
                                                 ready_state,
                                                 |_key, value| *value = ready_state);
-        self.window.set_ready_state(self.get_earliest_pipeline_ready_state());
+        //self.window.set_ready_state(self.get_earliest_pipeline_ready_state());
     }
 
     fn get_earliest_pipeline_ready_state(&self) -> ReadyState {
@@ -358,7 +361,7 @@ impl IOCompositor {
         self.render_states.insert_or_update_with(pipeline_id,
                                                  render_state,
                                                  |_key, value| *value = render_state);
-        self.window.set_render_state(render_state);
+        //self.window.set_render_state(render_state);
         if render_state == IdleRenderState {
             self.composite_ready = true;
         }
@@ -696,7 +699,7 @@ impl IOCompositor {
 
     fn on_resize_window_event(&mut self, new_size: TypedSize2D<DevicePixel, uint>) {
         // A size change could also mean a resolution change.
-        let new_hidpi_factor = self.window.hidpi_factor();
+        let new_hidpi_factor = self.view.hidpi_factor();
         if self.hidpi_factor != new_hidpi_factor {
             self.hidpi_factor = new_hidpi_factor;
             self.update_zoom_transform();
@@ -980,7 +983,7 @@ impl IOCompositor {
             self.shutdown_state = ShuttingDown;
         }
 
-        self.window.present();
+        self.view.present();
 
         let exit = self.opts.exit_after_load;
         if exit {

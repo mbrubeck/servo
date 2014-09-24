@@ -10,29 +10,14 @@ path = "main.rs"
 [dependencies.servo]
 path = "../.."
 
-[dependencies.plugins]
-path = "../../components/plugins"
-
 [dependencies.gfx]
 path = "../../components/gfx"
 
 [dependencies.script]
 path = "../../components/script"
 
-[dependencies.net]
-path = "../../components/net"
-
-[dependencies.msg]
-path = "../../components/msg"
-
 [dependencies.util]
 path = "../../components/util"
-
-[dependencies.style]
-path = "../../components/style"
-
-[dependencies.devtools]
-path = "../../components/devtools"
 
 [dependencies.azure]
 git = "https://github.com/servo/rust-azure"
@@ -44,26 +29,5 @@ git = "https://github.com/servo/rust-geom"
 git = "https://github.com/servo/glfw-rs"
 branch = "servo"
 
-[dependencies.glut]
-git = "https://github.com/servo/rust-glut"
-
-[dependencies.js]
-git = "https://github.com/servo/rust-mozjs"
-
 [dependencies.layers]
 git = "https://github.com/servo/rust-layers"
-
-[dependencies.opengles]
-git = "https://github.com/servo/rust-opengles"
-
-[dependencies.png]
-git = "https://github.com/servo/rust-png"
-
-[dependencies.stb_image]
-git = "https://github.com/servo/rust-stb-image"
-
-[dependencies.core_graphics]
-git = "https://github.com/servo/rust-core-graphics"
-
-[dependencies.core_text]
-git = "https://github.com/servo/rust-core-text"

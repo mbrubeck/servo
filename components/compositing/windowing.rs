@@ -54,6 +54,23 @@ pub enum WindowEvent {
     QuitWindowEvent,
 }
 
+pub trait View {
+    /// Makes this view's rendering context current.
+    fn make_current(&self);
+
+    /// Presents the window to the screen (perhaps by page flipping).
+    fn present(&self);
+
+    /// Returns the hidpi factor of the monitor.
+    fn hidpi_factor(&self) -> ScaleFactor<ScreenPx, DevicePixel, f32>;
+
+    /// Returns the size of the window in hardware pixels.
+    fn framebuffer_size(&self) -> TypedSize2D<DevicePixel, uint>;
+
+    /// Returns the size of the window in density-independent "px" units.
+    fn size(&self) -> TypedSize2D<ScreenPx, f32>;
+}
+
 /// Methods for an abstract Application.
 pub trait ApplicationMethods {
     fn new() -> Self;

@@ -84,7 +84,7 @@ pub extern "C" fn android_start(argc: int, argv: *const *const u8) -> int {
 }
 
 #[cfg(not(test))]
-pub fn run(opts: opts::Opts) {
+pub fn run(opts: opts::Opts, view: Box<compositing::windowing::View>) {
     ::servo_util::opts::set_experimental_enabled(opts.enable_experimental);
     RegisterBindings::RegisterProxyHandlers();
 
@@ -152,6 +152,7 @@ pub fn run(opts: opts::Opts) {
 
     debug!("preparing to enter main loop");
     CompositorTask::create(opts,
+                           view,
                            compositor_port,
                            constellation_chan,
                            time_profiler_chan,

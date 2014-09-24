@@ -7,7 +7,7 @@
 
 #![feature(globs, phase, macro_rules)]
 
-#![deny(unused_imports, unused_variable)]
+//#![deny(unused_imports, unused_variable)]
 
 #[phase(plugin, link)]
 extern crate log;
@@ -56,7 +56,7 @@ mod headless;
 pub mod pipeline;
 pub mod constellation;
 
-mod windowing;
+pub mod windowing;
 
 #[path="platform/mod.rs"]
 pub mod platform;

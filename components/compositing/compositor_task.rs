@@ -184,7 +184,7 @@ pub enum Msg {
 }
 
 pub enum CompositorMode {
-    Windowed(Application),
+    Windowed,
     Headless
 }
 
@@ -197,7 +197,7 @@ impl CompositorTask {
         let mode: CompositorMode = if is_headless {
             Headless
         } else {
-            Windowed(ApplicationMethods::new())
+            Windowed
         };
 
         CompositorTask {
@@ -218,6 +218,7 @@ impl CompositorTask {
     }
 
     pub fn create(opts: Opts,
+                  view: Box<windowing::View>,
                   port: Receiver<Msg>,
                   constellation_chan: ConstellationChan,
                   time_profiler_chan: TimeProfilerChan,
@@ -226,8 +227,8 @@ impl CompositorTask {
         let compositor = CompositorTask::new(opts.headless);
 
         match compositor.mode {
-            Windowed(ref app) => {
-                compositor::IOCompositor::create(app,
+            Windowed => {
+                compositor::IOCompositor::create(view,
                                                  opts,
                                                  port,
                                                  constellation_chan.clone(),
