@@ -1709,9 +1709,8 @@ impl Flow for BlockFlow {
         // the content box. The containing block for absolutely-positioned descendants, on the
         // other hand, is only established if we are positioned.
         let relative_offset =
-            self.fragment.relative_position(&self.base
-                                                 .absolute_position_info
-                                                 .relative_containing_block_size);
+            self.fragment.relative_position(self.base.absolute_position_info
+                                                     .relative_containing_block_inline_size);
         if self.is_positioned() {
             self.base
                 .absolute_position_info
@@ -1747,7 +1746,7 @@ impl Flow for BlockFlow {
         let absolute_position_info_for_children = AbsolutePositionInfo {
             stacking_relative_position_of_absolute_containing_block:
                 stacking_relative_position_of_absolute_containing_block_for_children,
-            relative_containing_block_size: self.fragment.content_box().size,
+            relative_containing_block_inline_size: self.fragment.content_box().size.inline,
             layers_needed_for_positioned_flows: self.base
                                                     .flags
                                                     .contains(LAYERS_NEEDED_FOR_DESCENDANTS),

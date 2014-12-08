@@ -51,8 +51,7 @@ use geom::{Point2D, Rect, Size2D};
 use serialize::{Encoder, Encodable};
 use servo_msg::compositor_msg::LayerId;
 use servo_util::geometry::Au;
-use servo_util::logical_geometry::WritingMode;
-use servo_util::logical_geometry::{LogicalRect, LogicalSize};
+use servo_util::logical_geometry::{WritingMode, LogicalRect};
 use std::mem;
 use std::num::Zero;
 use std::fmt;
@@ -666,7 +665,7 @@ pub type DescendantOffsetIter<'a> = Zip<DescendantIter<'a>, MutItems<'a, Au>>;
 #[deriving(Encodable)]
 pub struct AbsolutePositionInfo {
     /// The size of the containing block for relatively-positioned descendants.
-    pub relative_containing_block_size: LogicalSize<Au>,
+    pub relative_containing_block_inline_size: Au,
 
     /// The position of the absolute containing block relative to the nearest ancestor stacking
     /// context. If the absolute containing block establishes the stacking context for this flow,
@@ -680,11 +679,11 @@ pub struct AbsolutePositionInfo {
 }
 
 impl AbsolutePositionInfo {
-    pub fn new(writing_mode: WritingMode) -> AbsolutePositionInfo {
+    pub fn new() -> AbsolutePositionInfo {
         // FIXME(pcwalton): The initial relative containing block-size should be equal to the size
         // of the root layer.
         AbsolutePositionInfo {
-            relative_containing_block_size: LogicalSize::zero(writing_mode),
+            relative_containing_block_inline_size: Au(0),
             stacking_relative_position_of_absolute_containing_block: Zero::zero(),
             layers_needed_for_positioned_flows: false,
         }
@@ -909,7 +908,7 @@ impl BaseFlow {
             block_container_explicit_block_size: None,
             absolute_cb: ContainingBlockLink::new(),
             display_list_building_result: NoDisplayListBuildingResult,
-            absolute_position_info: AbsolutePositionInfo::new(writing_mode),
+            absolute_position_info: AbsolutePositionInfo::new(),
             clip_rect: Rect(Zero::zero(), Size2D(Au(0), Au(0))),
             flags: flags,
             writing_mode: writing_mode,
@@ -966,9 +965,9 @@ impl BaseFlow {
     pub fn stacking_relative_position_of_child_fragment(&self, fragment: &Fragment)
                                                         -> Point2D<Au> {
         let relative_offset =
-            fragment.relative_position(&self
+            fragment.relative_position(self
                                        .absolute_position_info
-                                       .relative_containing_block_size);
+                                       .relative_containing_block_inline_size);
         self.stacking_relative_position.add_size(&relative_offset.to_physical(self.writing_mode))
     }
 }

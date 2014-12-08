@@ -825,27 +825,27 @@ impl Fragment {
 
     // Return offset from original position because of `position: relative`.
     pub fn relative_position(&self,
-                             containing_block_size: &LogicalSize<Au>)
+                             containing_block_inline_size: Au)
                              -> LogicalSize<Au> {
-        fn from_style(style: &ComputedValues, container_size: &LogicalSize<Au>)
+        fn from_style(style: &ComputedValues, container_inline_size: Au)
                       -> LogicalSize<Au> {
             let offsets = style.logical_position();
             let offset_i = if offsets.inline_start != LPA_Auto {
-                MaybeAuto::from_style(offsets.inline_start, container_size.inline).specified_or_zero()
+                MaybeAuto::from_style(offsets.inline_start, container_inline_size).specified_or_zero()
             } else {
-                -MaybeAuto::from_style(offsets.inline_end, container_size.inline).specified_or_zero()
+                -MaybeAuto::from_style(offsets.inline_end, container_inline_size).specified_or_zero()
             };
             let offset_b = if offsets.block_start != LPA_Auto {
-                MaybeAuto::from_style(offsets.block_start, container_size.inline).specified_or_zero()
+                MaybeAuto::from_style(offsets.block_start, container_inline_size).specified_or_zero()
             } else {
-                -MaybeAuto::from_style(offsets.block_end, container_size.inline).specified_or_zero()
+                -MaybeAuto::from_style(offsets.block_end, container_inline_size).specified_or_zero()
             };
             LogicalSize::new(style.writing_mode, offset_i, offset_b)
         }
 
         // Go over the ancestor fragments and add all relative offsets (if any).
         let mut rel_pos = if self.style().get_box().position == position::relative {
-            from_style(self.style(), containing_block_size)
+            from_style(self.style(), containing_block_inline_size)
         } else {
             LogicalSize::zero(self.style.writing_mode)
         };
@@ -855,7 +855,7 @@ impl Fragment {
             Some(ref inline_fragment_context) => {
                 for style in inline_fragment_context.styles.iter() {
                     if style.get_box().position == position::relative {
-                        rel_pos = rel_pos + from_style(&**style, containing_block_size);
+                        rel_pos = rel_pos + from_style(&**style, containing_block_inline_size);
                     }
                 }
             },
