@@ -731,6 +731,9 @@ pub struct BaseFlow {
     /// The collapsible margins for this flow, if any.
     pub collapsible_margins: CollapsibleMargins,
 
+    /// XXX
+    pub parent_collapsible_margins: Option<CollapsibleMargins>,
+
     /// The position of this flow relative to the start of the nearest ancestor stacking context.
     /// This is computed during the top-down pass of display list construction.
     pub stacking_relative_position: Point2D<Au>,
@@ -901,6 +904,7 @@ impl BaseFlow {
             parallel: FlowParallelInfo::new(),
             floats: Floats::new(writing_mode),
             collapsible_margins: CollapsibleMargins::new(),
+            parent_collapsible_margins: None,
             stacking_relative_position: Zero::zero(),
             abs_descendants: Descendants::new(),
             absolute_static_i_offset: Au(0),

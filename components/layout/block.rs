@@ -858,6 +858,12 @@ impl BlockFlow {
             margin_collapse_info.initialize_block_start_margin(
                 &self.fragment,
                 can_collapse_block_start_margin_with_kids);
+            match self.parent_collapsible_margins {
+                Some(parent_margins) => {
+                    // XXX
+                }
+                None => {}
+            }
 
             // At this point, `cur_b` is at the content edge of our box. Now iterate over children.
             let mut floats = self.base.floats.clone();
@@ -880,7 +886,7 @@ impl BlockFlow {
 
                 // Assign block-size now for the child if it was impacted by floats and we couldn't
                 // before.
-                flow::mut_base(kid).floats = floats.clone();
+                flow::mut_base(kid).floats = floats.clone(); // XXX may be overwritten just below
                 if flow::base(kid).flags.is_float() {
                     flow::mut_base(kid).position.start.b = cur_b;
                     {
@@ -908,6 +914,8 @@ impl BlockFlow {
                 }
 
                 // Lay the child out if this was an in-order traversal.
+                // XXX There may be collapsible margins from the previous element that won't be
+                // processed until advance_block_start_margin below.
                 let need_to_process_child_floats =
                     kid.assign_block_size_for_inorder_child_if_necessary(layout_context);
 
