@@ -547,6 +547,9 @@ pub struct BlockFlow {
     /// The hypothetical position, used for absolutely-positioned flows.
     hypothetical_position: LogicalPoint<Au>,
 
+    /// XXX mbrubeck
+    incoming_margin_collapse_info: Option<Box<MarginCollapseInfo>>,
+
     /// Additional floating flow members.
     pub float: Option<Box<FloatedBlockInfo>>,
 
@@ -577,6 +580,7 @@ impl BlockFlow {
             inline_size_of_preceding_left_floats: Au(0),
             inline_size_of_preceding_right_floats: Au(0),
             hypothetical_position: LogicalPoint::new(writing_mode, Au(0), Au(0)),
+            incoming_margin_collapse_info: None,
             float: None,
             flags: BlockFlowFlags::empty(),
         }
@@ -591,6 +595,7 @@ impl BlockFlow {
             inline_size_of_preceding_left_floats: Au(0),
             inline_size_of_preceding_right_floats: Au(0),
             hypothetical_position: LogicalPoint::new(writing_mode, Au(0), Au(0)),
+            incoming_margin_collapse_info: None,
             float: None,
             flags: BlockFlowFlags::empty(),
         }
@@ -608,6 +613,7 @@ impl BlockFlow {
             inline_size_of_preceding_left_floats: Au(0),
             inline_size_of_preceding_right_floats: Au(0),
             hypothetical_position: LogicalPoint::new(writing_mode, Au(0), Au(0)),
+            incoming_margin_collapse_info: None,
             float: Some(box FloatedBlockInfo::new(float_kind)),
             flags: BlockFlowFlags::empty(),
         }
@@ -625,6 +631,7 @@ impl BlockFlow {
             inline_size_of_preceding_left_floats: Au(0),
             inline_size_of_preceding_right_floats: Au(0),
             hypothetical_position: LogicalPoint::new(writing_mode, Au(0), Au(0)),
+            incoming_margin_collapse_info: None,
             float: Some(box FloatedBlockInfo::new(float_kind)),
             flags: BlockFlowFlags::empty(),
         }
@@ -859,6 +866,9 @@ impl BlockFlow {
             margin_collapse_info.initialize_block_start_margin(
                 &self.fragment,
                 can_collapse_block_start_margin_with_kids);
+            if let Some(box incoming_margins) = self.incoming_margin_collapse_info {
+                incoming_margins.advance_block_start_margin()
+            }
 
             // At this point, `cur_b` is at the content edge of our box. Now iterate over children.
             let mut floats = self.base.floats.clone();

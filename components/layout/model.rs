@@ -18,6 +18,7 @@ use std::cmp::{max, min};
 use std::fmt;
 
 /// A collapsible margin. See CSS 2.1 § 8.3.1.
+#[deriving(Encodable)]
 pub struct AdjoiningMargins {
     /// The value of the greatest positive margin.
     pub most_positive: Au,
@@ -84,6 +85,7 @@ enum FinalMarginState {
     BottomMarginCollapses,
 }
 
+#[deriving(Encodable)]
 pub struct MarginCollapseInfo {
     pub state: MarginCollapseState,
     pub block_start_margin: AdjoiningMargins,
@@ -237,6 +239,7 @@ impl MarginCollapseInfo {
     }
 }
 
+#[deriving(Encodable)]
 pub enum MarginCollapseState {
     AccumulatingCollapsibleTopMargin,
     AccumulatingMarginIn,
