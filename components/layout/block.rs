@@ -867,7 +867,9 @@ impl BlockFlow {
                 &self.fragment,
                 can_collapse_block_start_margin_with_kids);
             if let Some(box incoming_margins) = self.incoming_margin_collapse_info {
-                incoming_margins.advance_block_start_margin()
+                // TODO: "Pre-advance" the parent margins by self's block-start margin.  I think
+                // this is safe, as long as any later advance will just union idempotently, and the
+                // returned offset is never double-counted.
             }
 
             // At this point, `cur_b` is at the content edge of our box. Now iterate over children.
