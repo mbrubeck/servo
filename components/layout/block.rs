@@ -1236,6 +1236,7 @@ impl BlockFlow {
     // This computes the real value, and is run in the `AssignISizes` traversal.
     pub fn propagate_and_compute_used_inline_size(&mut self, layout_context: &LayoutContext) {
         let containing_block_inline_size = self.base.block_container_inline_size;
+        // TODO mbrubeck get containing block writing mode
         self.compute_used_inline_size(layout_context, containing_block_inline_size);
         if self.base.flags.is_float() {
             self.float.as_mut().unwrap().containing_inline_size = containing_block_inline_size;
@@ -2073,7 +2074,7 @@ pub trait ISizeAndMarginsComputer {
             fragment.margin.inline_start = solution.margin_inline_start;
             fragment.margin.inline_end = solution.margin_inline_end;
 
-            // Left border edge.
+            // Left border edge.  XXX mbrubeck actually 'start' border edge
             // XXX mbrubeck: need to take into account container size and direction
             fragment.border_box.start.i = fragment.margin.inline_start;
 
@@ -2135,6 +2136,7 @@ pub trait ISizeAndMarginsComputer {
 
         let containing_block_inline_size =
             self.containing_block_inline_size(block, parent_flow_inline_size, layout_context);
+        // TODO mbrubeck get containing block writing mode
 
         let mut solution = self.solve_inline_size_constraints(block, &input);
 
@@ -2162,7 +2164,7 @@ pub trait ISizeAndMarginsComputer {
 
         println!("solution: {:?}", solution);
 
-        self.set_inline_size_constraint_solutions(block, solution);
+        self.set_inline_size_constraint_solutions(block, containing_block_inline_size, solution);
         self.set_flow_x_coord_if_necessary(block, solution);
     }
 
