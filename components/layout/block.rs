@@ -2087,12 +2087,11 @@ pub trait ISizeAndMarginsComputer {
             // Start border edge. FIXME(mbrubeck): Handle vertical writing modes.
             fragment.border_box.start.i =
                 match (container_mode.is_bidi_ltr(), block_mode.is_bidi_ltr()) {
-                    (true, true) | (false, false) => {
-                        // The box's coordinates are in the same direction as its container.
-                        fragment.margin.inline_start
-                    }
+                    // The box's coordinates are in the same direction as its container.
+                    (true, true) | (false, false) => fragment.margin.inline_start,
+                    // The container's inline coordinates are in the opposite direction.
                     (true, false) | (false, true) => {
-                        // The container's inline coordinates are in the opposite direction.
+                        println!("  start.i = {:?} - {:?}", container_size, fragment.margin.inline_end);
                         container_size - fragment.margin.inline_end
                     }
                 };
@@ -2302,6 +2301,7 @@ impl ISizeAndMarginsComputer for AbsoluteNonReplaced {
             ..
         } = input;
 
+        // XXX(mbrubeck)
         // TODO: Check for direction of parent flow (NOT Containing Block)
         // when right-to-left is implemented.
         // Assume direction is 'ltr' for now

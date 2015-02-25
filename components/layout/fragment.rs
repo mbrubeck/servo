@@ -1952,11 +1952,12 @@ impl Fragment {
                                         relative_containing_block_size: &LogicalSize<Au>,
                                         coordinate_system: CoordinateSystem)
                                         -> Rect<Au> {
-        println!("  stacking_relative_flow_origin");
+        println!("  stacking_relative_border_box");
         // FIXME(pcwalton, #2795): Get the real container size.
         // XXX(mbrubeck): Use the correct containing block writing mode.
         let container_size = Size2D(relative_containing_block_size.inline, relative_containing_block_size.block);
         let border_box = self.border_box.to_physical(self.style.writing_mode, container_size);
+        println!("    stacking_relative_flow_origin: {:?}", stacking_relative_flow_origin);
         println!("    container_size: {:?}", container_size);
         println!("    border_box: {:?}", border_box);
         if coordinate_system == CoordinateSystem::Self && self.establishes_stacking_context() {
@@ -1968,6 +1969,7 @@ impl Fragment {
         // to the inline flow. Possibly we should extend the notion of "primary fragment" to fix
         // this.
         let relative_position = self.relative_position(relative_containing_block_size);
+        println!("    relative_position: {:?}", relative_position);
         border_box.translate_by_size(&relative_position.to_physical(self.style.writing_mode))
                   .translate(stacking_relative_flow_origin)
     }
