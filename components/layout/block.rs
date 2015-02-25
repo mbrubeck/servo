@@ -1360,7 +1360,7 @@ impl BlockFlow {
                 kid_base.block_container_writing_mode = containing_block_mode;
             }
             if kid.is_block_like() {
-                // XXX mbrubeck This is in self's writing mode, not kid's.
+                // FIXME(mbrubeck): This is in self's writing mode, not kid's.
                 kid.as_block().hypothetical_position.i = inline_start_content_edge
             }
 
@@ -1719,8 +1719,7 @@ impl Flow for BlockFlow {
         println!("compute_absolute_position");
         println!("  border_box: {:?}", self.fragment.border_box);
         // FIXME(#2795): Get the real container size
-        let container_size = Size2D(self.base.absolute_position_info.relative_containing_block_size.inline,
-                                    self.base.absolute_position_info.relative_containing_block_size.block);
+        let container_size = Size2D(self.base.block_container_inline_size, Au(0));
 
         if self.is_root() {
             self.base.clip = ClippingRegion::max()
@@ -2083,8 +2082,7 @@ pub trait ISizeAndMarginsComputer {
             fragment.margin.inline_start = solution.margin_inline_start;
             fragment.margin.inline_end = solution.margin_inline_end;
 
-            // Start border edge.
-            // FIXME(mbrubeck) Handle vertical writing modes.
+            // Start border edge. FIXME(mbrubeck): Handle vertical writing modes.
             fragment.border_box.start.i =
                 match (container_mode.is_bidi_ltr(), block_mode.is_bidi_ltr()) {
                     (true, true) | (false, false) => {
@@ -2093,7 +2091,6 @@ pub trait ISizeAndMarginsComputer {
                     }
                     (true, false) | (false, true) => {
                         // The container's inline coordinates are in the opposite direction.
-                        println!("{:?} - {:?} = {:?}", container_size, fragment.margin.inline_end, container_size - fragment.margin.inline_end);
                         container_size - fragment.margin.inline_end
                     }
                 };
