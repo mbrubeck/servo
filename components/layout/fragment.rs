@@ -1952,9 +1952,13 @@ impl Fragment {
                                         relative_containing_block_size: &LogicalSize<Au>,
                                         coordinate_system: CoordinateSystem)
                                         -> Rect<Au> {
+        println!("  stacking_relative_flow_origin");
         // FIXME(pcwalton, #2795): Get the real container size.
-        let container_size = Size2D::zero();
+        // XXX(mbrubeck): Use the correct containing block writing mode.
+        let container_size = Size2D(relative_containing_block_size.inline, relative_containing_block_size.block);
         let border_box = self.border_box.to_physical(self.style.writing_mode, container_size);
+        println!("    container_size: {:?}", container_size);
+        println!("    border_box: {:?}", border_box);
         if coordinate_system == CoordinateSystem::Self && self.establishes_stacking_context() {
             return Rect(ZERO_POINT, border_box.size)
         }

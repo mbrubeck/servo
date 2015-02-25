@@ -1746,6 +1746,8 @@ impl Flow for BlockFlow {
         // For relatively-positioned descendants, the containing block formed by a block is just
         // the content box. The containing block for absolutely-positioned descendants, on the
         // other hand, is only established if we are positioned.
+        println!("  relative_containing_block_size: {:?}",
+                 self.base.absolute_position_info.relative_containing_block_size);
         let relative_offset =
             self.fragment.relative_position(&self.base
                                                  .absolute_position_info
