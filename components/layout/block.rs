@@ -1711,8 +1711,11 @@ impl Flow for BlockFlow {
     }
 
     fn compute_absolute_position(&mut self) {
+        println!("compute_absolute_position");
+        println!("  border_box: {:?}", self.fragment.border_box);
         // FIXME(#2795): Get the real container size
-        let container_size = Size2D::zero();
+        let container_size = Size2D(self.base.absolute_position_info.relative_containing_block_size.inline,
+                                    self.base.absolute_position_info.relative_containing_block_size.block);
 
         if self.is_root() {
             self.base.clip = ClippingRegion::max()
@@ -1810,6 +1813,7 @@ impl Flow for BlockFlow {
                                                    .absolute_position_info
                                                    .relative_containing_block_size,
                                               CoordinateSystem::Self);
+        println!("  stacking_relative_border_box: {:?}", stacking_relative_border_box);
         let clip = self.fragment.clipping_region_for_children(&clip_in_child_coordinate_system,
                                                               &stacking_relative_border_box);
 
@@ -1819,6 +1823,7 @@ impl Flow for BlockFlow {
                 let kid_base = flow::mut_base(kid);
                 kid_base.stacking_relative_position = origin_for_children +
                     kid_base.position.start.to_physical(kid_base.writing_mode, container_size);
+                println!("  kid.stacking_relative_position: {:?}", kid_base.stacking_relative_position);
             }
 
             flow::mut_base(kid).absolute_position_info = absolute_position_info_for_children;
@@ -2069,6 +2074,7 @@ pub trait ISizeAndMarginsComputer {
             fragment.margin.inline_end = solution.margin_inline_end;
 
             // Left border edge.
+            // XXX mbrubeck: need to take into account container size and direction
             fragment.border_box.start.i = fragment.margin.inline_start;
 
             // The associated fragment has the border box of this flow.
@@ -2153,6 +2159,8 @@ pub trait ISizeAndMarginsComputer {
             input.computed_inline_size = MaybeAuto::Specified(computed_min_inline_size);
             solution = self.solve_inline_size_constraints(block, &input);
         }
+
+        println!("solution: {:?}", solution);
 
         self.set_inline_size_constraint_solutions(block, solution);
         self.set_flow_x_coord_if_necessary(block, solution);
