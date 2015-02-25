@@ -1702,6 +1702,7 @@ impl Fragment {
                 self.border_box.size.inline =
                     block_flow.base.intrinsic_inline_sizes.preferred_inline_size;
                 block_flow.base.block_container_inline_size = self.border_box.size.inline;
+                block_flow.base.block_container_writing_mode = self.style.writing_mode;
             }
             SpecificFragmentInfo::ScannedText(ref info) => {
                 // Scanned text fragments will have already had their content inline-sizes assigned

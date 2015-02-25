@@ -53,7 +53,7 @@ use gfx::display_list::{ClippingRegion, DisplayList};
 use rustc_serialize::{Encoder, Encodable};
 use msg::compositor_msg::LayerId;
 use servo_util::geometry::{Au, MAX_AU};
-use servo_util::logical_geometry::{LogicalPoint, LogicalRect, LogicalSize};
+use servo_util::logical_geometry::{LogicalPoint, LogicalRect, LogicalSize, WritingMode};
 use servo_util::opts;
 use std::cmp::{max, min};
 use std::fmt;
@@ -1236,7 +1236,6 @@ impl BlockFlow {
     // This computes the real value, and is run in the `AssignISizes` traversal.
     pub fn propagate_and_compute_used_inline_size(&mut self, layout_context: &LayoutContext) {
         let containing_block_inline_size = self.base.block_container_inline_size;
-        // TODO mbrubeck get containing block writing mode
         self.compute_used_inline_size(layout_context, containing_block_inline_size);
         if self.base.flags.is_float() {
             self.float.as_mut().unwrap().containing_inline_size = containing_block_inline_size;
@@ -1322,6 +1321,7 @@ impl BlockFlow {
         };
 
         // Calculate containing block inline size.
+        let containing_block_mode = self.base.writing_mode;
         let containing_block_size = if flags.contains(IS_ABSOLUTELY_POSITIONED) {
             self.containing_block_size(layout_context.shared.screen_size).inline
         } else {
@@ -1357,8 +1357,10 @@ impl BlockFlow {
                     kid_base.position.start.i = inline_start_content_edge
                 }
                 kid_base.block_container_inline_size = content_inline_size;
+                kid_base.block_container_writing_mode = containing_block_mode;
             }
             if kid.is_block_like() {
+                // XXX mbrubeck This is in self's writing mode, not kid's.
                 kid.as_block().hypothetical_position.i = inline_start_content_edge
             }
 
@@ -1396,6 +1398,7 @@ impl BlockFlow {
                     propagate_column_inline_sizes_to_child(kid,
                                                            i,
                                                            content_inline_size,
+                                                           containing_block_mode,
                                                            *column_computed_inline_sizes,
                                                            &mut inline_start_margin_edge)
                 }
@@ -1605,6 +1608,7 @@ impl Flow for BlockFlow {
             self.base.position.start = LogicalPoint::zero(self.base.writing_mode);
             self.base.block_container_inline_size = LogicalSize::from_physical(
                 self.base.writing_mode, layout_context.shared.screen_size).inline;
+            self.base.block_container_writing_mode = self.base.writing_mode;
 
             // The root element is never impacted by floats.
             self.base.flags.remove(IMPACTED_BY_LEFT_FLOATS);
@@ -2067,16 +2071,32 @@ pub trait ISizeAndMarginsComputer {
     fn set_inline_size_constraint_solutions(&self,
                                             block: &mut BlockFlow,
                                             solution: ISizeConstraintSolution) {
+        // FIXME(mbrubeck) Get correct containing block mode for positioned blocks?
         let inline_size;
         let extra_inline_size_from_margin;
         {
+            let block_mode = block.base.writing_mode;
+            let container_mode = block.base.block_container_writing_mode;
+            let container_size = block.base.block_container_inline_size;
+
             let fragment = block.fragment();
             fragment.margin.inline_start = solution.margin_inline_start;
             fragment.margin.inline_end = solution.margin_inline_end;
 
-            // Left border edge.  XXX mbrubeck actually 'start' border edge
-            // XXX mbrubeck: need to take into account container size and direction
-            fragment.border_box.start.i = fragment.margin.inline_start;
+            // Start border edge.
+            // FIXME(mbrubeck) Handle vertical writing modes.
+            fragment.border_box.start.i =
+                match (container_mode.is_bidi_ltr(), block_mode.is_bidi_ltr()) {
+                    (true, true) | (false, false) => {
+                        // The box's coordinates are in the same direction as its container.
+                        fragment.margin.inline_start
+                    }
+                    (true, false) | (false, true) => {
+                        // The container's inline coordinates are in the opposite direction.
+                        println!("{:?} - {:?} = {:?}", container_size, fragment.margin.inline_end, container_size - fragment.margin.inline_end);
+                        container_size - fragment.margin.inline_end
+                    }
+                };
 
             // The associated fragment has the border box of this flow.
             inline_size = solution.inline_size + fragment.border_padding.inline_start_end();
@@ -2136,7 +2156,6 @@ pub trait ISizeAndMarginsComputer {
 
         let containing_block_inline_size =
             self.containing_block_inline_size(block, parent_flow_inline_size, layout_context);
-        // TODO mbrubeck get containing block writing mode
 
         let mut solution = self.solve_inline_size_constraints(block, &input);
 
@@ -2164,7 +2183,7 @@ pub trait ISizeAndMarginsComputer {
 
         println!("solution: {:?}", solution);
 
-        self.set_inline_size_constraint_solutions(block, containing_block_inline_size, solution);
+        self.set_inline_size_constraint_solutions(block, solution);
         self.set_flow_x_coord_if_necessary(block, solution);
     }
 
@@ -2633,6 +2652,7 @@ fn propagate_column_inline_sizes_to_child(
         kid: &mut Flow,
         child_index: uint,
         content_inline_size: Au,
+        writing_mode: WritingMode,
         column_computed_inline_sizes: &[ColumnComputedInlineSize],
         inline_start_margin_edge: &mut Au) {
     // If kid is table_rowgroup or table_row, the column inline-sizes info should be copied from
@@ -2656,6 +2676,7 @@ fn propagate_column_inline_sizes_to_child(
         let kid_base = flow::mut_base(kid);
         kid_base.position.start.i = *inline_start_margin_edge;
         kid_base.block_container_inline_size = inline_size;
+        kid_base.block_container_writing_mode = writing_mode;
     }
 
     if kid.is_table_cell() {
