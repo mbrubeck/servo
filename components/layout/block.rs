@@ -1719,6 +1719,8 @@ impl Flow for BlockFlow {
         println!("compute_absolute_position");
         println!("  border_box: {:?}", self.fragment.border_box);
         // FIXME(#2795): Get the real container size
+        // XXX(mbrubeck) Containing block or flow parent?  Should be the same one used to calculate
+        // things like self.base.position and border_box on which to_physical is called.
         let container_size = Size2D(self.base.block_container_inline_size, Au(0));
 
         if self.is_root() {
@@ -2086,14 +2088,12 @@ pub trait ISizeAndMarginsComputer {
 
             // Start border edge. FIXME(mbrubeck): Handle vertical writing modes.
             fragment.border_box.start.i =
-                match (container_mode.is_bidi_ltr(), block_mode.is_bidi_ltr()) {
-                    // The box's coordinates are in the same direction as its container.
-                    (true, true) | (false, false) => fragment.margin.inline_start,
-                    // The container's inline coordinates are in the opposite direction.
-                    (true, false) | (false, true) => {
-                        println!("  start.i = {:?} - {:?}", container_size, fragment.margin.inline_end);
-                        container_size - fragment.margin.inline_end
-                    }
+                if container_mode.is_bidi_ltr() == block_mode.is_bidi_ltr() {
+                    fragment.margin.inline_start
+                } else {
+                    // The parent's "start" direction is the child's "end" direction.
+                    println!("{:?} - {:?}", container_size, fragment.margin.inline_end);
+                    container_size - fragment.margin.inline_end
                 };
 
             // The associated fragment has the border box of this flow.
@@ -2197,11 +2197,20 @@ pub trait ISizeAndMarginsComputer {
                                            block: &mut BlockFlow,
                                            input: &ISizeConstraintInput)
                                            -> ISizeConstraintSolution {
+        println!("solve_block_inline_size_constraints 2");
         let (computed_inline_size, inline_start_margin, inline_end_margin, available_inline_size) =
             (input.computed_inline_size,
              input.inline_start_margin,
              input.inline_end_margin,
              input.available_inline_size);
+
+        // Check for direction of parent flow (NOT Containing Block)
+        let block_mode = block.base.writing_mode;
+        let container_mode = block.base.block_container_writing_mode;
+        let parent_has_same_direction = container_mode.is_bidi_ltr() == block_mode.is_bidi_ltr();
+
+        // XXX(mbrubeck) Handle vertical writing modes.
+        // XXX(mbrubeck) Which coordinates are in parent coordinate system?
 
         // If inline-size is not 'auto', and inline-size + margins > available_inline-size, all
         // 'auto' margins are treated as 0.
@@ -2225,10 +2234,15 @@ pub trait ISizeAndMarginsComputer {
             match (inline_start_margin, computed_inline_size, inline_end_margin) {
                 // If all have a computed value other than 'auto', the system is
                 // over-constrained so we discard the end margin.
-                (MaybeAuto::Specified(margin_start), MaybeAuto::Specified(inline_size), MaybeAuto::Specified(_margin_end)) =>
-                    (margin_start, inline_size, available_inline_size -
-                     (margin_start + inline_size)),
-
+                (MaybeAuto::Specified(margin_start), MaybeAuto::Specified(inline_size), MaybeAuto::Specified(margin_end)) => {
+                    if parent_has_same_direction {
+                        (margin_start, inline_size, available_inline_size -
+                         (margin_start + inline_size))
+                    } else {
+                        println!("  reverse 3!");
+                        (available_inline_size - (margin_end + inline_size), inline_size, margin_end)
+                    }
+                }
                 // If exactly one value is 'auto', solve for it
                 (MaybeAuto::Auto, MaybeAuto::Specified(inline_size), MaybeAuto::Specified(margin_end)) =>
                     (available_inline_size - (inline_size + margin_end), inline_size, margin_end),
@@ -2290,6 +2304,7 @@ impl ISizeAndMarginsComputer for AbsoluteNonReplaced {
                                block: &mut BlockFlow,
                                input: &ISizeConstraintInput)
                                -> ISizeConstraintSolution {
+        println!("solve_inline_size_constraints");
         let &ISizeConstraintInput {
             computed_inline_size,
             inline_start_margin,
@@ -2301,10 +2316,13 @@ impl ISizeAndMarginsComputer for AbsoluteNonReplaced {
             ..
         } = input;
 
-        // XXX(mbrubeck)
-        // TODO: Check for direction of parent flow (NOT Containing Block)
-        // when right-to-left is implemented.
-        // Assume direction is 'ltr' for now
+        // Check for direction of parent flow (NOT Containing Block)
+        let block_mode = block.base.writing_mode;
+        let container_mode = block.base.block_container_writing_mode;
+        let parent_has_same_direction = container_mode.is_bidi_ltr() == block_mode.is_bidi_ltr();
+
+        // XXX(mbrubeck) Handle vertical writing modes.
+        // XXX(mbrubeck) Which coordinates are in parent coordinate system?
 
         // Distance from the inline-start edge of the Absolute Containing Block to the
         // inline-start margin edge of a hypothetical box that would have been the
@@ -2330,9 +2348,15 @@ impl ISizeAndMarginsComputer for AbsoluteNonReplaced {
                     (MaybeAuto::Auto, MaybeAuto::Auto) => {
                         let total_margin_val = available_inline_size - inline_start - inline_end - inline_size;
                         if total_margin_val < Au(0) {
-                            // margin-inline-start becomes 0 because direction is 'ltr'.
-                            // TODO: Handle 'rtl' when it is implemented.
-                            (inline_start, inline_end, inline_size, Au(0), total_margin_val)
+                            if parent_has_same_direction {
+                                // margin-inline-start becomes 0
+                                (inline_start, inline_end, inline_size, Au(0), total_margin_val)
+                            } else {
+                                println!("  reverse!");
+                                // margin-inline-end becomes 0, because it's toward the parent's
+                                // inline-start edge.
+                                (inline_start, inline_end, inline_size, total_margin_val, Au(0))
+                            }
                         } else {
                             // Equal margins
                             (inline_start, inline_end, inline_size,
@@ -2350,10 +2374,15 @@ impl ISizeAndMarginsComputer for AbsoluteNonReplaced {
                     }
                     (MaybeAuto::Specified(margin_start), MaybeAuto::Specified(margin_end)) => {
                         // Values are over-constrained.
-                        // Ignore value for 'inline-end' cos direction is 'ltr'.
-                        // TODO: Handle 'rtl' when it is implemented.
                         let sum = inline_start + inline_size + margin_start + margin_end;
-                        (inline_start, available_inline_size - sum, inline_size, margin_start, margin_end)
+                        if parent_has_same_direction {
+                            // Ignore value for 'inline-end'
+                            (inline_start, available_inline_size - sum, inline_size, margin_start, margin_end)
+                        } else {
+                            println!("  reverse 2!");
+                            // Ignore value for 'inline-start'
+                            (available_inline_size - sum, inline_end, inline_size, margin_start, margin_end)
+                        }
                     }
                 }
             }
