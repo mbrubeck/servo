@@ -1321,12 +1321,13 @@ impl BlockFlow {
         };
 
         // Calculate containing block inline size.
-        let containing_block_mode = self.base.writing_mode;
         let containing_block_size = if flags.contains(IS_ABSOLUTELY_POSITIONED) {
             self.containing_block_size(layout_context.shared.screen_size).inline
         } else {
             content_inline_size
         };
+        // FIXME (mbrubeck): Get correct mode for absolute containing block
+        let containing_block_mode = self.base.writing_mode;
 
         for (i, kid) in self.base.child_iter().enumerate() {
             {
@@ -1350,11 +1351,18 @@ impl BlockFlow {
 
             // The inline-start margin edge of the child flow is at our inline-start content edge,
             // and its inline-size is our content inline-size.
+            let kid_mode = flow::base(kid).writing_mode;
             {
                 let kid_base = flow::mut_base(kid);
                 if !kid_base.flags.contains(IS_ABSOLUTELY_POSITIONED) &&
                         !kid_base.flags.is_float() {
-                    kid_base.position.start.i = inline_start_content_edge
+                    // FIXME(mbrubeck): This is in self's writing mode, not kid's.
+                    kid_base.position.start.i =
+                        if kid_mode.is_bidi_ltr() == containing_block_mode.is_bidi_ltr() {
+                            inline_start_content_edge
+                        } else {
+                            inline_start_content_edge + content_inline_size
+                        }
                 }
                 kid_base.block_container_inline_size = content_inline_size;
                 kid_base.block_container_writing_mode = containing_block_mode;
@@ -1832,13 +1840,18 @@ impl Flow for BlockFlow {
 
         // Process children.
         for kid in self.base.child_iter() {
+            let is_positioned = kid.is_positioned();
             if !flow::base(kid).flags.contains(IS_ABSOLUTELY_POSITIONED) {
                 let kid_base = flow::mut_base(kid);
                 // XXX mbrubeck: position.start is 0,0 for non-absolute elements.
                 // Should be 0,0 in *physical* coords.
-                kid_base.stacking_relative_position = origin_for_children +
-                    kid_base.position.start.to_physical(kid_base.writing_mode,
-                       container_size_for_children);
+                kid_base.stacking_relative_position = if true { //XXX is_positioned {
+                    origin_for_children +
+                        kid_base.position.start.to_physical(kid_base.writing_mode,
+                                                            container_size_for_children)
+                } else {
+                    origin_for_children
+                };
                 println!("  kid.position.start: {:?}", kid_base.position.start);
                 println!("  kid.stacking_relative_position: {:?}", kid_base.stacking_relative_position);
             }
