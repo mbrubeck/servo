@@ -1794,10 +1794,12 @@ impl Flow for BlockFlow {
                                                     .flags
                                                     .contains(LAYERS_NEEDED_FOR_DESCENDANTS),
         };
+        let container_size_for_children =
+            self.fragment.content_box().size.to_physical(self.base.writing_mode);
 
         // Compute the origin and clipping rectangle for children.
         let relative_offset = relative_offset.to_physical(self.base.writing_mode);
-        let origin_for_children; // what coordinates is this in?
+        let origin_for_children; // XXX(mbrubeck): what coordinates is this in?
         let clip_in_child_coordinate_system;
         if self.fragment.establishes_stacking_context() {
             // We establish a stacking context, so the position of our children is vertically
@@ -1814,7 +1816,8 @@ impl Flow for BlockFlow {
             origin_for_children = self.base.stacking_relative_position + relative_offset;
             clip_in_child_coordinate_system = self.base.clip.clone()
         }
-        // XXX(mbrubeck) stacking_relative_position is wrong. What coordinate system?
+        println!("  stacking_relative_position: {:?}", self.base.stacking_relative_position);
+        println!("  origin_for_children: {:?}", origin_for_children);
         let stacking_relative_border_box =
             self.fragment
                 .stacking_relative_border_box(&self.base.stacking_relative_position,
@@ -1830,9 +1833,10 @@ impl Flow for BlockFlow {
         for kid in self.base.child_iter() {
             if !flow::base(kid).flags.contains(IS_ABSOLUTELY_POSITIONED) {
                 let kid_base = flow::mut_base(kid);
-                // XXX mbrubeck direction?
                 kid_base.stacking_relative_position = origin_for_children +
-                    kid_base.position.start.to_physical(kid_base.writing_mode, container_size);
+                    kid_base.position.start.to_physical(kid_base.writing_mode,
+                       container_size_for_children);
+                println!("  kid.position.start: {:?}", kid_base.position.start);
                 println!("  kid.stacking_relative_position: {:?}", kid_base.stacking_relative_position);
             }
 
