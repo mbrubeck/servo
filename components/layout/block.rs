@@ -1814,6 +1814,7 @@ impl Flow for BlockFlow {
             origin_for_children = self.base.stacking_relative_position + relative_offset;
             clip_in_child_coordinate_system = self.base.clip.clone()
         }
+        // XXX(mbrubeck) stacking_relative_position is wrong. What coordinate system?
         let stacking_relative_border_box =
             self.fragment
                 .stacking_relative_border_box(&self.base.stacking_relative_position,
@@ -2076,6 +2077,7 @@ pub trait ISizeAndMarginsComputer {
                                             block: &mut BlockFlow,
                                             solution: ISizeConstraintSolution) {
         // FIXME(mbrubeck) Get correct containing block mode for positioned blocks?
+        println!("  set_inline_size_constraint_solutions");
         let inline_size;
         let extra_inline_size_from_margin;
         {
@@ -2087,19 +2089,19 @@ pub trait ISizeAndMarginsComputer {
             fragment.margin.inline_start = solution.margin_inline_start;
             fragment.margin.inline_end = solution.margin_inline_end;
 
+            // The associated fragment has the border box of this flow.
+            inline_size = solution.inline_size + fragment.border_padding.inline_start_end();
+            fragment.border_box.size.inline = inline_size;
+
             // Start border edge. FIXME(mbrubeck): Handle vertical writing modes.
             fragment.border_box.start.i =
                 if container_mode.is_bidi_ltr() == block_mode.is_bidi_ltr() {
                     fragment.margin.inline_start
                 } else {
                     // The parent's "start" direction is the child's "end" direction.
-                    println!("{:?} - {:?}", container_size, fragment.margin.inline_end);
-                    container_size - fragment.margin.inline_end
+                    println!("    {:?} - {:?} - {:?}", container_size, inline_size, fragment.margin.inline_end);
+                    container_size - inline_size - fragment.margin.inline_end
                 };
-
-            // The associated fragment has the border box of this flow.
-            inline_size = solution.inline_size + fragment.border_padding.inline_start_end();
-            fragment.border_box.size.inline = inline_size;
 
             // To calculate the total size of this block, we also need to account for any additional
             // size contribution from positive margins. Negative margins means the block isn't made
@@ -2112,6 +2114,7 @@ pub trait ISizeAndMarginsComputer {
         // as the inline-size of our parent. We might be smaller and we might be larger if we
         // overflow.
         flow::mut_base(block).position.size.inline = inline_size + extra_inline_size_from_margin;
+        println!("    total inline size {:?}", block.base.position.size.inline);
     }
 
     /// Set the x coordinate of the given flow if it is absolutely positioned.
