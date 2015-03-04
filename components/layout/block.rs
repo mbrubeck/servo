@@ -1782,7 +1782,6 @@ impl Flow for BlockFlow {
                     position - self.base.stacking_relative_position
                 }
             } else {
-                // check stacking_relative_position_of_absolute_containing_block
                 self.base
                     .absolute_position_info
                     .stacking_relative_position_of_absolute_containing_block
@@ -1835,7 +1834,8 @@ impl Flow for BlockFlow {
         for kid in self.base.child_iter() {
             if !flow::base(kid).flags.contains(IS_ABSOLUTELY_POSITIONED) {
                 let kid_base = flow::mut_base(kid);
-                // XXX mbrubeck check how these are converted and added.
+                // XXX mbrubeck: position.start is 0,0 for non-absolute elements.
+                // Should be 0,0 in *physical* coords.
                 kid_base.stacking_relative_position = origin_for_children +
                     kid_base.position.start.to_physical(kid_base.writing_mode,
                        container_size_for_children);
