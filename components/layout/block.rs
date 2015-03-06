@@ -1239,6 +1239,9 @@ impl BlockFlow {
             inline_start_content_edge: Au,
             content_inline_size: Au,
             table_info: Option<table::ChildInlineSizeInfo>) {
+        println!("propagate_assigned_inline_size_to_children");
+        println!("  inline_start_content_edge: {:?}", inline_start_content_edge);
+        println!("  content_inline_size: {:?}", content_inline_size);
         // Keep track of whether floats could impact each child.
         let mut inline_start_floats_impact_child =
             self.base.flags.contains(IMPACTED_BY_LEFT_FLOATS);
@@ -1298,6 +1301,7 @@ impl BlockFlow {
         } else {
             content_inline_size
         };
+        println!("  containing_block_size: {:?}", containing_block_size);
         // FIXME (mbrubeck): Get correct mode for absolute containing block
         let containing_block_mode = self.base.writing_mode;
 
@@ -1332,16 +1336,20 @@ impl BlockFlow {
             // and its inline-size is our content inline-size.
             let kid_mode = flow::base(kid).writing_mode;
             {
+                println!("  kid with mode: {:?}", kid_mode);
                 let kid_base = flow::mut_base(kid);
                 if !kid_base.flags.contains(IS_ABSOLUTELY_POSITIONED) &&
                         !kid_base.flags.is_float() {
                     kid_base.position.start.i =
                         if kid_mode.is_bidi_ltr() == containing_block_mode.is_bidi_ltr() {
+                            // XXX (mbrubeck) wrong if both are RTL?
                             inline_start_content_edge
                         } else {
                             // The kid's inline 'start' is at the parent's 'end'
-                            inline_start_content_edge + content_inline_size
-                        }
+                            // XXX (mbrubeck) should be inline-end content edge
+                            inline_start_content_edge
+                        };
+                    println!("  kid_base.position.start.i: {:?}", kid_base.position.start.i);
                 }
                 kid_base.block_container_inline_size = content_inline_size;
                 kid_base.block_container_writing_mode = containing_block_mode;
@@ -1352,6 +1360,7 @@ impl BlockFlow {
                         inline_start_content_edge
                     } else {
                         // The kid's inline 'start' is at the parent's 'end'
+                        // XXX mbrubeck
                         inline_start_content_edge + content_inline_size
                     }
             }
@@ -1632,6 +1641,8 @@ impl Flow for BlockFlow {
         }
 
         // Move in from the inline-start border edge.
+        //
+        // XXX (mrubeck) for RTL, need the inline-end content edge?
         let inline_start_content_edge = self.fragment.border_box.start.i +
             self.fragment.border_padding.inline_start;
         let padding_and_borders = self.fragment.border_padding.inline_start_end();
@@ -1707,9 +1718,11 @@ impl Flow for BlockFlow {
     }
 
     fn compute_absolute_position(&mut self) {
+        println!("compute_absolute_position");
         // FIXME (mbrubeck): Get the real container size, taking the container writing mode into
         // account.  Must handle vertical writing modes.
         let container_size = Size2D(self.base.block_container_inline_size, Au(0));
+        println!("  container_size {:?}", container_size);
 
         if self.is_root() {
             self.base.clip = ClippingRegion::max()
@@ -1781,6 +1794,7 @@ impl Flow for BlockFlow {
                                                     .flags
                                                     .contains(LAYERS_NEEDED_FOR_DESCENDANTS),
         };
+        // XXX (mbrubeck): Add extra for margins?
         let container_size_for_children =
             self.fragment.content_box().size.to_physical(self.base.writing_mode);
 
@@ -1803,6 +1817,7 @@ impl Flow for BlockFlow {
             origin_for_children = self.base.stacking_relative_position + relative_offset;
             clip_in_child_coordinate_system = self.base.clip.clone()
         }
+        println!("  stacking_relative_position {:?}", self.base.stacking_relative_position);
         let stacking_relative_border_box =
             self.fragment
                 .stacking_relative_border_box(&self.base.stacking_relative_position,
@@ -1817,12 +1832,22 @@ impl Flow for BlockFlow {
                                                               &stacking_relative_border_box);
 
         // Process children.
+        println!("  stacking_relative_border_box {:?}", stacking_relative_border_box);
+        println!("  container_size_for_children {:?}", container_size_for_children);
+        println!("  origin_for_children {:?}", origin_for_children);
         for kid in self.base.child_iter() {
             if !flow::base(kid).flags.contains(IS_ABSOLUTELY_POSITIONED) {
                 let kid_base = flow::mut_base(kid);
-                kid_base.stacking_relative_position = origin_for_children +
-                    kid_base.position.start.to_physical(kid_base.writing_mode,
-                                                        container_size_for_children);
+                // XXX (mbrubeck):
+                // * [x] Should not use `start` if child is not H LTR
+                // * [ ] `position.size` is inflated by the inline-start margin (see comment in
+                //       set_inline_size_constraint_solutions.
+                let physical_position = kid_base.position.to_physical(kid_base.writing_mode,
+                                                                      container_size_for_children); // XXX mbrubeck
+                kid_base.stacking_relative_position = origin_for_children + physical_position.origin;
+                println!("    kid_base.position {:?}", kid_base.position);
+                println!("    physical_position {:?}", physical_position);
+                println!("    kid_base.stacking_relative_position {:?}", kid_base.stacking_relative_position);
             }
 
             flow::mut_base(kid).absolute_position_info = absolute_position_info_for_children;
@@ -2072,6 +2097,7 @@ pub trait ISizeAndMarginsComputer {
     fn set_inline_size_constraint_solutions(&self,
                                             block: &mut BlockFlow,
                                             solution: ISizeConstraintSolution) {
+        println!("set_inline_size_constraint_solutions");
         let inline_size;
         let extra_inline_size_from_margin;
         {
@@ -2088,6 +2114,7 @@ pub trait ISizeAndMarginsComputer {
             // The associated fragment has the border box of this flow.
             inline_size = solution.inline_size + fragment.border_padding.inline_start_end();
             fragment.border_box.size.inline = inline_size;
+            println!("  border_box.size.inline: {:?}", inline_size);
 
             // Start border edge.
             // FIXME (mbrubeck): Handle vertical writing modes.
@@ -2096,20 +2123,27 @@ pub trait ISizeAndMarginsComputer {
                     fragment.margin.inline_start
                 } else {
                     // The parent's "start" direction is the child's "end" direction.
+                    // XXX mbrubeck
                     container_size - inline_size - fragment.margin.inline_end
                 };
+            println!("  border_box.start.i: {:?}", fragment.border_box.start.i);
 
             // To calculate the total size of this block, we also need to account for any additional
             // size contribution from positive margins. Negative margins means the block isn't made
             // larger at all by the margin.
             extra_inline_size_from_margin = max(Au(0), fragment.margin.inline_start) +
                                             max(Au(0), fragment.margin.inline_end);
+            println!("  extra_inline_size_from_margin: {:?}", fragment.border_box.start.i);
         }
 
         // We also resize the block itself, to ensure that overflow is not calculated
         // as the inline-size of our parent. We might be smaller and we might be larger if we
         // overflow.
+        //
+        // XXX (mbrubeck): The margin is included in position.size but not position.start, which
+        // throws off position.to_physical results (especially for RTL blocks).
         flow::mut_base(block).position.size.inline = inline_size + extra_inline_size_from_margin;
+        println!("  position.size.inline: {:?}", flow::base(block).position.size.inline);
     }
 
     /// Set the x coordinate of the given flow if it is absolutely positioned.
@@ -2199,6 +2233,11 @@ pub trait ISizeAndMarginsComputer {
              input.inline_start_margin,
              input.inline_end_margin,
              input.available_inline_size);
+        println!("solve_block_inline_size_constraints");
+        println!("  available_inline_size {:?}", available_inline_size);
+        println!("  computed_inline_size {:?}", computed_inline_size);
+        println!("  start_margin {:?}", inline_start_margin);
+        println!("  end_margin {:?}", inline_end_margin);
 
         // Check for direction of parent flow (NOT Containing Block)
         let block_mode = block.base.writing_mode;
@@ -2230,6 +2269,9 @@ pub trait ISizeAndMarginsComputer {
                 // If all have a computed value other than 'auto', the system is
                 // over-constrained so we discard the end margin.
                 (MaybeAuto::Specified(margin_start), MaybeAuto::Specified(inline_size), MaybeAuto::Specified(margin_end)) => {
+                    println!("  overconstrained");
+                    println!("    parent_has_same_direction {:?}", parent_has_same_direction);
+                    println!("    start/size/end {:?}/{:?}/{:?}", margin_start, inline_size, margin_end);
                     if parent_has_same_direction {
                         (margin_start, inline_size, available_inline_size -
                          (margin_start + inline_size))
@@ -2268,6 +2310,7 @@ pub trait ISizeAndMarginsComputer {
         if computed_inline_size == MaybeAuto::Auto && block.is_inline_block() {
             inline_size = block.get_shrink_to_fit_inline_size(inline_size);
         }
+        println!("  start/size/end {:?}/{:?}/{:?}", inline_start_margin, inline_size, inline_end_margin);
 
         ISizeConstraintSolution::new(inline_size, inline_start_margin, inline_end_margin)
     }

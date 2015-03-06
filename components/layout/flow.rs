@@ -952,7 +952,7 @@ impl BaseFlow {
             restyle_damage: damage,
             children: FlowList::new(),
             intrinsic_inline_sizes: IntrinsicISizes::new(),
-            position: LogicalRect::zero(writing_mode),
+            position: LogicalRect::zero(writing_mode), // XXX mbrubeck should be from_physical(zero)?
             overflow: ZERO_RECT,
             parallel: FlowParallelInfo::new(),
             floats: Floats::new(writing_mode),
