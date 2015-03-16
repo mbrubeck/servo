@@ -1826,9 +1826,9 @@ impl Flow for BlockFlow {
                 let kid_base = flow::mut_base(kid);
                 // FIXME (mbrubeck): `position.size` is inflated by the inline margin size, making
                 // this incorrect for RTL blocks (see `set_inline_size_constraint_solutions`).
-                kid_base.stacking_relative_position = origin_for_children +
-                    kid_base.position.start.to_physical(kid_base.writing_mode,
-                                                        container_size_for_children);
+                let physical_position = kid_base.position.to_physical(kid_base.writing_mode,
+                                                                      container_size_for_children);
+                kid_base.stacking_relative_position = origin_for_children + physical_position.origin;
             }
 
             flow::mut_base(kid).absolute_position_info = absolute_position_info_for_children;
