@@ -1635,15 +1635,16 @@ impl Flow for BlockFlow {
         let inline_start_content_edge = self.fragment.border_box.start.i +
             self.fragment.border_padding.inline_start;
 
+        let padding_and_borders = self.fragment.border_padding.inline_start_end();
+
         // Distance from the inline-end ___ to the inline-end content edge.
         let inline_end_content_edge =
             self.base.block_container_inline_size -
             self.fragment.margin.inline_end -
             self.fragment.border_box.size.inline -
-            self.fragment.border_padding.inline_start_end() -
-            self.fragment.border_box.start.i;
+            self.fragment.border_box.start.i -
+            padding_and_borders;
 
-        let padding_and_borders = self.fragment.border_padding.inline_start_end();
         let content_inline_size = self.fragment.border_box.size.inline - padding_and_borders;
 
         self.propagate_assigned_inline_size_to_children(layout_context,
