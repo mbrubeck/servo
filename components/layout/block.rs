@@ -1237,6 +1237,7 @@ impl BlockFlow {
             &mut self,
             layout_context: &LayoutContext,
             inline_start_content_edge: Au,
+            inline_end_content_edge: Au,
             content_inline_size: Au,
             table_info: Option<table::ChildInlineSizeInfo>) {
         // Keep track of whether floats could impact each child.
@@ -1340,8 +1341,7 @@ impl BlockFlow {
                             inline_start_content_edge
                         } else {
                             // The kid's inline 'start' is at the parent's 'end'
-                            // XXX (mbrubeck) should be inline-end content edge
-                            inline_start_content_edge
+                            inline_end_content_edge
                         };
                 }
                 kid_base.block_container_inline_size = content_inline_size;
@@ -1353,8 +1353,7 @@ impl BlockFlow {
                         inline_start_content_edge
                     } else {
                         // The kid's inline 'start' is at the parent's 'end'
-                        // XXX (mbrubeck) should be inline-end content edge
-                        inline_start_content_edge
+                        inline_end_content_edge
                     }
             }
 
@@ -1632,17 +1631,24 @@ impl Flow for BlockFlow {
                 self.base.flags.remove(IMPACTED_BY_RIGHT_FLOATS);
             }
         }
-
         // Move in from the inline-start border edge.
-        //
-        // XXX (mrubeck) for RTL, need the inline-end content edge?
         let inline_start_content_edge = self.fragment.border_box.start.i +
             self.fragment.border_padding.inline_start;
+
+        // Distance from the inline-end ___ to the inline-end content edge.
+        let inline_end_content_edge =
+            self.base.block_container_inline_size -
+            self.fragment.margin.inline_end -
+            self.fragment.border_box.size.inline -
+            self.fragment.border_padding.inline_start_end() -
+            self.fragment.border_box.start.i;
+
         let padding_and_borders = self.fragment.border_padding.inline_start_end();
         let content_inline_size = self.fragment.border_box.size.inline - padding_and_borders;
 
         self.propagate_assigned_inline_size_to_children(layout_context,
                                                         inline_start_content_edge,
+                                                        inline_end_content_edge,
                                                         content_inline_size,
                                                         None);
     }
@@ -2116,7 +2122,7 @@ pub trait ISizeAndMarginsComputer {
         // as the inline-size of our parent. We might be smaller and we might be larger if we
         // overflow.
         //
-        // XXX (mbrubeck): The margin is included in position.size but not position.start, which
+        // FIXME (mbrubeck): The margin is included in position.size but not position.start, which
         // throws off position.to_physical results (especially for RTL blocks).
         flow::mut_base(block).position.size.inline = inline_size + extra_inline_size_from_margin;
     }

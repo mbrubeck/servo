@@ -291,6 +291,8 @@ impl Flow for TableWrapperFlow {
         }
 
         let inline_start_content_edge = self.block_flow.fragment.border_box.start.i;
+        let inline_end_content_edge = self.block_flow.base.block_container_inline_size -
+                                      self.block_flow.fragment.border_box.start.i;
         let content_inline_size = self.block_flow.fragment.border_box.size.inline;
 
         // In case of fixed layout, column inline-sizes are calculated in table flow.
@@ -310,6 +312,7 @@ impl Flow for TableWrapperFlow {
                 self.block_flow.propagate_assigned_inline_size_to_children(
                     layout_context,
                     inline_start_content_edge,
+                    inline_end_content_edge,
                     content_inline_size,
                     None)
             }
@@ -321,6 +324,7 @@ impl Flow for TableWrapperFlow {
                 self.block_flow
                     .propagate_assigned_inline_size_to_children(layout_context,
                                                                 inline_start_content_edge,
+                                                                inline_end_content_edge,
                                                                 content_inline_size,
                                                                 Some(info));
             }
