@@ -87,6 +87,17 @@ impl<'a> VirtualMethods for JSRef<'a, HTMLStyleElement> {
         }
     }
 
+    fn child_characterdata_changed(&self, child: JSRef<Node>) {
+        if let Some(ref s) = self.super_type() {
+            s.child_characterdata_changed(child);
+        }
+
+        let node: JSRef<Node> = NodeCast::from_ref(*self);
+        if node.is_in_doc() {
+            self.parse_own_css();
+        }
+    }
+
     fn bind_to_tree(&self, tree_in_doc: bool) {
         if let Some(ref s) = self.super_type() {
             s.bind_to_tree(tree_in_doc);

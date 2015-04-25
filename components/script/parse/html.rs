@@ -23,13 +23,14 @@ use dom::documenttype::DocumentType;
 use dom::element::{Element, AttributeHandlers, ElementHelpers, ElementCreator};
 use dom::htmlscriptelement::HTMLScriptElement;
 use dom::htmlscriptelement::HTMLScriptElementHelpers;
-use dom::node::{Node, NodeHelpers, NodeTypeId};
+use dom::node::{Node, NodeDamage, NodeHelpers, NodeTypeId};
 use dom::node::{document_from_node, window_from_node};
 use dom::processinginstruction::ProcessingInstruction;
 use dom::processinginstruction::ProcessingInstructionHelpers;
 use dom::servohtmlparser;
 use dom::servohtmlparser::{ServoHTMLParser, FragmentContext};
 use dom::text::Text;
+use dom::virtualmethods::VirtualMethods;
 use parse::Parser;
 
 use encoding::all::UTF_8;
@@ -157,6 +158,8 @@ impl<'a> TreeSink for servohtmlparser::Sink {
                         let node = prev_sibling.root();
                         let data = CharacterDataCast::to_ref(node.r()).unwrap();
                         data.AppendData(t);
+                        node.r().dirty(NodeDamage::OtherNodeDamage);
+                        parent.r().child_characterdata_changed(node.r());
                     },
                     // Otherwise, insert a new text node.
                     _ => {

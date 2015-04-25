@@ -118,6 +118,13 @@ pub trait VirtualMethods {
         }
     }
 
+    /// Called on the parent when the CharacterData of a text Child changes.
+    fn child_characterdata_changed(&self, child: JSRef<Node>) {
+        if let Some(ref s) = self.super_type() {
+            s.child_characterdata_changed(child);
+        }
+    }
+
     /// Called during event dispatch after the bubbling phase completes.
     fn handle_event(&self, event: JSRef<Event>) {
         if let Some(s) = self.super_type() {
