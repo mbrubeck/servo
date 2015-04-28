@@ -33,7 +33,7 @@ use style::properties::ComputedValues;
 use style::values::CSSFloat;
 use style::values::computed::LengthOrPercentageOrAuto;
 use util::geometry::Au;
-use util::logical_geometry::LogicalRect;
+use util::logical_geometry::{LogicalMargin, LogicalRect};
 
 /// A table flow corresponded to the table's internal table fragment under a table wrapper flow.
 /// The properties `position`, `float`, and `margin-*` are used on the table wrapper fragment,
@@ -433,6 +433,7 @@ impl Flow for TableFlow {
 
         let inline_size_computer = InternalTable {
             border_collapse: self.block_flow.fragment.style.get_inheritedtable().border_collapse,
+            empty: self.column_intrinsic_inline_sizes.len() == 0,
         };
         inline_size_computer.compute_used_inline_size(&mut self.block_flow,
                                                       layout_context,
@@ -589,10 +590,15 @@ impl fmt::Debug for TableFlow {
 /// Their inline-sizes are calculated in the same way and do not have margins.
 pub struct InternalTable {
     pub border_collapse: border_collapse::T,
+    pub empty: bool,
 }
 
 impl ISizeAndMarginsComputer for InternalTable {
     fn compute_border_and_padding(&self, block: &mut BlockFlow, containing_block_inline_size: Au) {
+        if self.empty {
+            block.fragment.border_padding = LogicalMargin::zero(block.fragment.style.writing_mode);
+            return;
+        }
         block.fragment.compute_border_and_padding(containing_block_inline_size,
                                                   self.border_collapse)
     }

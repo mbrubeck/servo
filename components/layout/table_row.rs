@@ -313,6 +313,7 @@ impl Flow for TableRowFlow {
 
         let inline_size_computer = InternalTable {
             border_collapse: self.block_flow.fragment.style.get_inheritedtable().border_collapse,
+            empty: false,
         };
         inline_size_computer.compute_used_inline_size(&mut self.block_flow,
                                                       layout_context,
