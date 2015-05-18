@@ -934,11 +934,7 @@ impl InlineFlow {
             let fragment = fragments.get_mut(fragment_index.to_usize());
             inline_start_position_for_fragment = inline_start_position_for_fragment +
                 fragment.margin.inline_start;
-            fragment.border_box = LogicalRect::new(fragment.style.writing_mode,
-                                                   inline_start_position_for_fragment,
-                                                   fragment.border_box.start.b,
-                                                   fragment.border_box.size.inline,
-                                                   fragment.border_box.size.block);
+            fragment.border_box.start.i = inline_start_position_for_fragment;
             fragment.update_late_computed_inline_position_if_necessary();
             inline_start_position_for_fragment = inline_start_position_for_fragment +
                 fragment.border_box.size.inline + fragment.margin.inline_end;
