@@ -161,6 +161,15 @@ where T: Int + num::One + iter::Step, for<'a> &'a T: ops::Add<&'a T, Output = T>
     }
 }
 
+impl<T: Int, I: RangeIndex<Index=T>> iter::DoubleEndedIterator for EachIndex<T, I>
+where T: Int + num::One + iter::Step, for<'a> &'a T: ops::Add<&'a T, Output = T>,
+        for<'a> &'a T: ops::Sub<&'a T, Output = T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<I> {
+        self.it.next_back().map(RangeIndex::new)
+    }
+}
+
 impl<I: RangeIndex> Range<I> {
     /// Create a new range from beginning and length offsets. This could be
     /// denoted as `[begin, begin + length)`.

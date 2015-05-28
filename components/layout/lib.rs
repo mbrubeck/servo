@@ -55,6 +55,7 @@ extern crate selectors;
 extern crate smallvec;
 extern crate string_cache;
 extern crate style;
+extern crate unicode_bidi;
 extern crate url;
 
 // Listed first because of macro definitions

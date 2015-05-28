@@ -39,6 +39,7 @@ extern crate string_cache;
 extern crate style;
 extern crate skia;
 extern crate time;
+extern crate unicode_bidi;
 extern crate url;
 
 extern crate gfx_traits;

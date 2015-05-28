@@ -2,16 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use font::{Font, FontHandleMethods, FontMetrics, IS_WHITESPACE_SHAPING_FLAG, RunMetrics};
+use font::{Font, FontHandleMethods, FontMetrics, IS_WHITESPACE_SHAPING_FLAG, RTL_FLAG, RunMetrics};
 use font::{ShapingOptions};
 use platform::font_template::FontTemplateData;
+use text::glyph::{CharIndex, GlyphStore};
+
 use util::geometry::Au;
 use util::range::Range;
 use util::vec::{Comparator, FullBinarySearchMethods};
+
 use std::cmp::{Ordering, max};
 use std::slice::Iter;
 use std::sync::Arc;
-use text::glyph::{CharIndex, GlyphStore};
+use unicode_bidi::is_rtl;
 
 /// A single "paragraph" of text in one font size and style.
 #[derive(Clone)]
@@ -23,6 +26,7 @@ pub struct TextRun {
     pub font_metrics: FontMetrics,
     /// The glyph runs that make up this text run.
     pub glyphs: Arc<Vec<GlyphRun>>,
+    pub bidi_level: u8,
 }
 
 /// A single series of glyphs within a text run.
@@ -186,19 +190,20 @@ impl<'a> Iterator for LineIterator<'a> {
 }
 
 impl<'a> TextRun {
-    pub fn new(font: &mut Font, text: String, options: &ShapingOptions) -> TextRun {
-        let glyphs = TextRun::break_and_shape(font, &text, options);
+    pub fn new(font: &mut Font, text: String, level: u8, options: &ShapingOptions) -> TextRun {
+        let glyphs = TextRun::break_and_shape(font, &text, level, options);
         let run = TextRun {
             text: Arc::new(text),
             font_metrics: font.metrics.clone(),
             font_template: font.handle.template(),
             actual_pt_size: font.actual_pt_size,
             glyphs: Arc::new(glyphs),
+            bidi_level: level,
         };
         return run;
     }
 
-    pub fn break_and_shape(font: &mut Font, text: &str, options: &ShapingOptions)
+    pub fn break_and_shape(font: &mut Font, text: &str, level: u8, options: &ShapingOptions)
                            -> Vec<GlyphRun> {
         // TODO(Issue #230): do a better job. See Gecko's LineBreaker.
         let mut glyphs = vec!();
@@ -239,6 +244,9 @@ impl<'a> TextRun {
                 let mut options = *options;
                 if !cur_slice_is_whitespace {
                     options.flags.insert(IS_WHITESPACE_SHAPING_FLAG);
+                }
+                if is_rtl(level) {
+                    options.flags.insert(RTL_FLAG);
                 }
 
                 glyphs.push(GlyphRun {

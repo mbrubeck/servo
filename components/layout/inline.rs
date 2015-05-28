@@ -501,6 +501,8 @@ impl LineBreaker {
 
     /// Tries to append the given fragment to the line, splitting it if necessary. Commits the
     /// current line if needed.
+    ///
+    /// XXX (mbrubeck): Adjust for RTL?
     fn reflow_fragment(&mut self,
                        mut fragment: Fragment,
                        flow: &InlineFlow,
@@ -930,6 +932,8 @@ impl InlineFlow {
             text_align::T::left | text_align::T::right => unreachable!()
         }
 
+        // XXX mbrubeck: Adjust for direction?
+        //for fragment_index in line.range.each_index().rev() {
         for fragment_index in line.range.each_index() {
             let fragment = fragments.get_mut(fragment_index.to_usize());
             inline_start_position_for_fragment = inline_start_position_for_fragment +
