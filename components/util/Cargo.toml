@@ -32,7 +32,7 @@ git = "https://github.com/servo/rust-layers"
 
 [dependencies]
 log = "*"
-bitflags = "*"
+bitflags = "0.2"
 libc = "*"
 rand = "*"
 rustc-serialize = "0.3"
