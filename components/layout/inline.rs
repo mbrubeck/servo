@@ -501,8 +501,6 @@ impl LineBreaker {
 
     /// Tries to append the given fragment to the line, splitting it if necessary. Commits the
     /// current line if needed.
-    ///
-    /// XXX (mbrubeck): Adjust for RTL?
     fn reflow_fragment(&mut self,
                        mut fragment: Fragment,
                        flow: &InlineFlow,
@@ -744,6 +742,29 @@ impl InlineFragments {
     /// A convenience function to return a mutable reference to the fragment at a given index.
     pub fn get_mut<'a>(&'a mut self, index: usize) -> &'a mut Fragment {
         &mut self.fragments[index]
+    }
+
+    pub fn text(&self) -> (String, Vec<usize>) {
+        let mut text = String::new();
+        let mut fragment_offsets = Vec::with_capacity(self.fragments.len());
+        let mut byte_offset = 0;
+
+        for fragment in &self.fragments {
+            fragment_offsets.push(byte_offset);
+            match fragment.specific {
+                SpecificFragmentInfo::ScannedText(ref info) => {
+                    let begin = info.range.begin().to_usize();
+                    let len = info.range.length().to_usize();
+                    // FIXME (mbrubeck): This is terribly inefficient. Can we use byte indices
+                    // instead?
+                    text.extend(info.run.text.chars().skip(begin).take(len));
+                    byte_offset = text.len();
+                }
+                // TODO (mbrubeck) Insert neutral or control characters for non-text fragments?
+                _ => continue
+            }
+        }
+        (text, fragment_offsets)
     }
 }
 
@@ -1316,11 +1337,31 @@ impl Flow for InlineFlow {
                                            self.minimum_depth_below_baseline);
         scanner.scan_for_lines(self, layout_context);
 
+
+        let (text, byte_offsets) = self.fragments.text();
+        // TODO (mbrubeck): set the paragraph level based on the 'direction' property.
+        let info = ::unicode_bidi::process_paragraph(&text, None);
+
         // Now, go through each line and lay out the fragments inside.
         let mut line_distance_from_flow_block_start = Au(0);
         let line_count = self.lines.len();
         for line_index in 0..line_count {
             let line = &mut self.lines[line_index];
+
+            let frag_begin = line.range.begin().to_usize();
+            let frag_end = line.range.end().to_usize();
+
+            let byte_begin = byte_offsets[frag_begin];
+            let byte_end = if frag_end < self.fragments.len() {
+                byte_offsets[frag_end]
+            } else {
+                text.len()
+            };
+
+            let runs = ::unicode_bidi::visual_runs(byte_begin..byte_end, &info);
+            println!("{:?}", runs); // XXX mbrubeck
+
+            // TODO (mbrubeck): Reorder fragments to visual order.
 
             // Lay out fragments in the inline direction, and justify them if necessary.
             InlineFlow::set_inline_fragment_positions(&mut self.fragments,
