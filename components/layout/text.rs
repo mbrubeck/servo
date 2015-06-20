@@ -48,9 +48,11 @@ impl TextRunScanner {
 
         // TODO (mbrubeck): Insert control characters based CSS unicode-bidi property.
         let paragraph = text(&fragments);
+        println!("paragraph ({} bytes): {:?}", paragraph.len(), paragraph); // XXX mbrubeck
 
         // TODO (mbrubeck): Set paragraph level based on CSS direction property.
         let info = ::unicode_bidi::process_paragraph(&paragraph, None);
+        println!("  levels {:?}", info.levels); // XXX mbrubeck
         let mut levels_index = 0;
 
         // FIXME(pcwalton): We want to be sure not to allocate multiple times, since this is a

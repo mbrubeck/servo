@@ -1342,6 +1342,9 @@ impl Flow for InlineFlow {
         // TODO (mbrubeck): set the paragraph level based on the 'direction' property.
         let info = ::unicode_bidi::process_paragraph(&text, None);
 
+        println!("text ({} bytes): {:?}", text.len(), text); // XXX mbrubeck
+        println!("  byte_offsets: {:?}", byte_offsets); // XXX mbrubeck
+
         // Now, go through each line and lay out the fragments inside.
         let mut line_distance_from_flow_block_start = Au(0);
         let line_count = self.lines.len();
@@ -1359,7 +1362,7 @@ impl Flow for InlineFlow {
             };
 
             let runs = ::unicode_bidi::visual_runs(byte_begin..byte_end, &info);
-            println!("{:?}", runs); // XXX mbrubeck
+            println!("  runs: {:?}", runs); // XXX mbrubeck
 
             // TODO (mbrubeck): Reorder fragments to visual order.
 
