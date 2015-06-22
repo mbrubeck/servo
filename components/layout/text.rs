@@ -44,6 +44,7 @@ impl TextRunScanner {
                          font_context: &mut FontContext,
                          mut fragments: LinkedList<Fragment>)
                          -> InlineFragments {
+        println!("     scan_for_runs");
         debug!("TextRunScanner: scanning {} fragments for text runs...", fragments.len());
 
         // TODO (mbrubeck): Insert control characters based CSS unicode-bidi property.
@@ -153,6 +154,7 @@ impl TextRunScanner {
                 let mut flush = false;
 
                 for character in text.chars() {
+                    // TODO (mbrubeck): Remove this and do splitting in scan_for_lines instead?
                     let bidi_level = bidi_levels[*bidi_levels_index];
                     if run_info.bidi_level != bidi_level {
                         run_info.bidi_level = bidi_level;
