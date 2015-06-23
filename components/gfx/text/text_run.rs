@@ -32,6 +32,8 @@ pub struct GlyphRun {
     pub glyph_store: Arc<GlyphStore>,
     /// The range of characters in the containing run.
     pub range: Range<CharIndex>,
+    /// The range of bytes in the containing run.
+    pub byte_range: Range<usize>,
 }
 
 pub struct NaturalWordSliceIterator<'a> {
@@ -244,6 +246,7 @@ impl<'a> TextRun {
                 glyphs.push(GlyphRun {
                     glyph_store: font.shape_text(slice, &options),
                     range: Range::new(char_last_boundary, char_i - char_last_boundary),
+                    byte_range: Range::new(byte_last_boundary, byte_i - byte_last_boundary),
                 });
                 byte_last_boundary = byte_i;
                 char_last_boundary = char_i;
@@ -267,6 +270,7 @@ impl<'a> TextRun {
             glyphs.push(GlyphRun {
                 glyph_store: font.shape_text(slice, &options),
                 range: Range::new(char_last_boundary, char_i - char_last_boundary),
+                byte_range: Range::new(byte_last_boundary, byte_i - byte_last_boundary),
             });
         }
 

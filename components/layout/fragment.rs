@@ -619,8 +619,10 @@ pub struct ScannedTextFragmentInfo {
     /// The intrinsic size of the text fragment.
     pub content_size: LogicalSize<Au>,
 
-    /// The range within the above text run that this represents.
+    /// The char range within the above text run that this represents.
     pub range: Range<CharIndex>,
+    /// The byte range within the above text run that this represents.
+    pub byte_range: Range<usize>,
 
     /// The endpoint of the above range, including whitespace that was stripped out. This exists
     /// so that we can restore the range to its original value (before line breaking occurred) when
@@ -636,12 +638,14 @@ impl ScannedTextFragmentInfo {
     /// Creates the information specific to a scanned text fragment from a range and a text run.
     pub fn new(run: Arc<Box<TextRun>>,
                range: Range<CharIndex>,
+               byte_range: Range<usize>,
                content_size: LogicalSize<Au>,
                requires_line_break_afterward_if_wrapping_on_newlines: bool)
                -> ScannedTextFragmentInfo {
         ScannedTextFragmentInfo {
             run: run,
             range: range,
+            byte_range: byte_range,
             content_size: content_size,
             range_end_including_stripped_whitespace: range.end(),
             requires_line_break_afterward_if_wrapping_on_newlines:
@@ -840,6 +844,7 @@ impl Fragment {
         let info = box ScannedTextFragmentInfo::new(
             text_run,
             split.range,
+            Range::new(split.range.begin().to_usize(), split.range.length().to_usize()), // XXX mbrubeck
             size,
             requires_line_break_afterward_if_wrapping_on_newlines);
         self.transform(size, SpecificFragmentInfo::ScannedText(info))

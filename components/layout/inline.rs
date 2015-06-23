@@ -367,7 +367,9 @@ impl LineBreaker {
                 fragment.specific {
             let scanned_text_fragment_info = &mut **scanned_text_fragment_info;
             let mut range = &mut scanned_text_fragment_info.range;
-            strip_trailing_whitespace_if_necessary(&**scanned_text_fragment_info.run, range);
+            let mut byte_range = &mut scanned_text_fragment_info.byte_range;
+            strip_trailing_whitespace_if_necessary(&**scanned_text_fragment_info.run, range,
+                                                   byte_range);
 
             let old_fragment_inline_size = fragment.border_box.size.inline +
                 fragment.margin.inline_start_end();
@@ -1725,16 +1727,20 @@ enum LineFlushMode {
 }
 
 /// Given a range and a text run, adjusts the range to eliminate trailing whitespace.
-fn strip_trailing_whitespace_if_necessary(text_run: &TextRun, range: &mut Range<CharIndex>) {
+fn strip_trailing_whitespace_if_necessary(text_run: &TextRun,
+                                          range: &mut Range<CharIndex>,
+                                          byte_range: &mut Range<usize>) {
     // FIXME(pcwalton): Is there a more clever (i.e. faster) way to do this?
     debug!("stripping trailing whitespace: range={:?}, len={}",
            range,
            text_run.text.chars().count());
-    let text = text_run.text.slice_chars(range.begin().to_usize(), range.end().to_usize());
+    let text = &text_run.text[byte_range.begin()..byte_range.end()];
     let mut trailing_whitespace_character_count = 0;
-    for ch in text.chars().rev() {
+    let mut byte_end = byte_range.end();
+    for (byte_i, ch) in text.char_indices().rev() {
         if util::str::char_is_whitespace(ch) {
-            trailing_whitespace_character_count += 1
+            trailing_whitespace_character_count += 1;
+            byte_end = byte_i;
         } else {
             break
         }
@@ -1742,6 +1748,7 @@ fn strip_trailing_whitespace_if_necessary(text_run: &TextRun, range: &mut Range<
 
     if trailing_whitespace_character_count != 0 {
         range.extend_by(CharIndex(-trailing_whitespace_character_count));
+        byte_range.extend_to(byte_end);
     }
 }
 

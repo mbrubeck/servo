@@ -239,16 +239,19 @@ impl TextRunScanner {
                 let mut mapping = mappings.next().unwrap();
                 let run = runs[mapping.text_run_index].clone();
 
+                let byte_end = mapping.byte_range.end();
                 let requires_line_break_afterward_if_wrapping_on_newlines =
-                    run.text.char_at_reverse(mapping.byte_range.end()) == '\n';
+                    run.text.char_at_reverse(byte_end) == '\n';
                 if requires_line_break_afterward_if_wrapping_on_newlines {
                     mapping.char_range.extend_by(CharIndex(-1));
+                    mapping.byte_range.extend_to(byte_end - 1);
                 }
 
                 let text_size = old_fragment.border_box.size;
                 let mut new_text_fragment_info = box ScannedTextFragmentInfo::new(
                     run,
                     mapping.char_range,
+                    mapping.byte_range,
                     text_size,
                     requires_line_break_afterward_if_wrapping_on_newlines);
 
