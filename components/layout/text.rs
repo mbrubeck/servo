@@ -200,7 +200,7 @@ impl TextRunScanner {
 
                     // Consume this character.
                     end_position += character.len_utf8();
-                    *bidi_levels_index += character.len_utf8();
+                    *bidi_levels_index += 1;
                 }
 
                 // If the mapping is zero-length, don't flush it.

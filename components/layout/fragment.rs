@@ -1583,6 +1583,17 @@ impl Fragment {
         })
     }
 
+    pub fn split_at_character_index(&self, idx: CharIndex) -> (SplitInfo, SplitInfo) {
+        let info = match self.specific {
+            SpecificFragmentInfo::ScannedText(ref info) => info,
+            _ => panic!("Unexpected fragment type in split_at_character_count")
+        };
+        let head_range = Range::new(info.range.begin(), idx - info.range.begin());
+        let tail_range = Range::new(idx, info.range.end() - idx);
+
+        (SplitInfo::new(head_range, info), SplitInfo::new(tail_range, info))
+    }
+
     /// The opposite of `calculate_split_position_using_breaking_strategy`: merges this fragment
     /// with the next one.
     pub fn merge_with(&mut self, next_fragment: Fragment) {
