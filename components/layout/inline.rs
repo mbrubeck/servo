@@ -174,6 +174,8 @@ struct LineBreaker {
     floats: Floats,
     /// The resulting fragment list for the flow, consisting of possibly-broken fragments.
     new_fragments: Vec<Fragment>,
+    /// The bidi embedding level of each fragment in `new_fragments`
+    bidi_levels: Vec<u8>,
     /// The next fragment or fragments that we need to work on.
     work_list: VecDeque<Fragment>,
     /// The line we're currently working on.
@@ -201,6 +203,7 @@ impl LineBreaker {
            -> LineBreaker {
         LineBreaker {
             new_fragments: Vec::new(),
+            bidi_levels: Vec::new(),
             work_list: VecDeque::new(),
             pending_line: Line {
                 range: Range::empty(),
@@ -223,6 +226,7 @@ impl LineBreaker {
     fn reset_scanner(&mut self) {
         self.lines = Vec::new();
         self.new_fragments = Vec::new();
+        self.bidi_levels = Vec::new();
         self.cur_b = Au(0);
         self.reset_line();
     }
@@ -250,7 +254,6 @@ impl LineBreaker {
         let text = flow.fragments.text();
         // TODO (mbrubeck): set the paragraph level based on the 'direction' property.
         let info = ::unicode_bidi::process_paragraph(&text, None);
-        let runs = ::unicode_bidi::level_runs(&info.levels, &info.classes);
 
         println!("text ({} bytes): {:?}", text.len(), text); // XXX mbrubeck
 
@@ -266,7 +269,11 @@ impl LineBreaker {
         self.lines = Vec::new();
 
         // Do the reflow.
-        self.reflow_fragments(old_fragment_iter, flow, layout_context, &runs);
+        self.reflow_fragments(old_fragment_iter, flow, layout_context, &info);
+
+        // TODO (mbrubeck): Re-order each line into visual order.
+        for line in &mut self.lines {
+        }
 
         // Place the fragments back into the flow.
         old_fragments.fragments = mem::replace(&mut self.new_fragments, vec![]);
@@ -279,9 +286,10 @@ impl LineBreaker {
                               mut old_fragment_iter: I,
                               flow: &'a InlineFlow,
                               layout_context: &LayoutContext,
-                              bidi_runs: &[::unicode_bidi::LevelRun])
+                              bidi_info: &::unicode_bidi::ParagraphInfo)
                               where I: Iterator<Item=Fragment> {
 
+        let bidi_runs = ::unicode_bidi::level_runs(&bidi_info.levels, &bidi_info.classes);
         let mut start_char = CharIndex(0);
         let mut bidi_run_idx = 0;
 
@@ -340,8 +348,10 @@ impl LineBreaker {
                 }
             };
 
+            let bidi_level = bidi_info.levels[start_char.to_usize()];
+
             // Try to append the fragment.
-            self.reflow_fragment(fragment, flow, layout_context, flags);
+            self.reflow_fragment(fragment, flow, layout_context, flags, bidi_level);
         }
 
         if !self.pending_line_is_empty() {
@@ -557,7 +567,8 @@ impl LineBreaker {
                        mut fragment: Fragment,
                        flow: &InlineFlow,
                        layout_context: &LayoutContext,
-                       flags: InlineReflowFlags) {
+                       flags: InlineReflowFlags,
+                       bidi_level: u8) {
         // Determine initial placement for the fragment if we need to.
         if self.pending_line_is_empty() {
             fragment.strip_leading_whitespace_if_necessary();
@@ -604,7 +615,7 @@ impl LineBreaker {
             fragment.margin_box_inline_size() + indentation;
         if new_inline_size <= green_zone.inline {
             debug!("LineBreaker: fragment fits without splitting");
-            self.push_fragment_to_line(layout_context, fragment, line_flush_mode);
+            self.push_fragment_to_line(layout_context, fragment, line_flush_mode, bidi_level);
             return
         }
 
@@ -615,7 +626,7 @@ impl LineBreaker {
                  !flags.contains(WRAP_ON_NEWLINE_INLINE_REFLOW_FLAG)) {
             debug!("LineBreaker: fragment can't split and line {} is empty, so overflowing",
                     self.lines.len());
-            self.push_fragment_to_line(layout_context, fragment, LineFlushMode::No);
+            self.push_fragment_to_line(layout_context, fragment, LineFlushMode::No, bidi_level);
             return
         }
 
@@ -651,11 +662,11 @@ impl LineBreaker {
             (Some(inline_start_fragment), Some(inline_end_fragment)) => {
                 self.push_fragment_to_line(layout_context,
                                            inline_start_fragment,
-                                           LineFlushMode::Flush);
+                                           LineFlushMode::Flush, bidi_level);
                 self.work_list.push_front(inline_end_fragment)
             },
             (Some(fragment), None) => {
-                self.push_fragment_to_line(layout_context, fragment, line_flush_mode);
+                self.push_fragment_to_line(layout_context, fragment, line_flush_mode, bidi_level);
             }
             (None, Some(fragment)) => {
                 // Yes, this can happen!
@@ -672,7 +683,8 @@ impl LineBreaker {
     fn push_fragment_to_line(&mut self,
                              layout_context: &LayoutContext,
                              fragment: Fragment,
-                             line_flush_mode: LineFlushMode) {
+                             line_flush_mode: LineFlushMode,
+                             bidi_level: u8) {
         let indentation = self.indentation_for_pending_fragment();
         if self.pending_line_is_empty() {
             assert!(self.new_fragments.len() <= (u16::MAX as usize));
@@ -693,7 +705,7 @@ impl LineBreaker {
         }
 
         if !need_ellipsis {
-            self.push_fragment_to_line_ignoring_text_overflow(fragment, layout_context);
+            self.push_fragment_to_line_ignoring_text_overflow(fragment, layout_context, bidi_level);
         } else {
             let ellipsis = fragment.transform_into_ellipsis(layout_context);
             if let Some(truncation_info) =
@@ -701,9 +713,9 @@ impl LineBreaker {
                                                      ellipsis.margin_box_inline_size()) {
                 let fragment = fragment.transform_with_split_info(&truncation_info.split,
                                                                   truncation_info.text_run);
-                self.push_fragment_to_line_ignoring_text_overflow(fragment, layout_context);
+                self.push_fragment_to_line_ignoring_text_overflow(fragment, layout_context, bidi_level);
             }
-            self.push_fragment_to_line_ignoring_text_overflow(ellipsis, layout_context);
+            self.push_fragment_to_line_ignoring_text_overflow(ellipsis, layout_context, bidi_level);
         }
 
         if line_flush_mode == LineFlushMode::Flush {
@@ -715,7 +727,8 @@ impl LineBreaker {
     /// case of `text-overflow: ellipsis`.
     fn push_fragment_to_line_ignoring_text_overflow(&mut self,
                                                     fragment: Fragment,
-                                                    layout_context: &LayoutContext) {
+                                                    layout_context: &LayoutContext,
+                                                    bidi_level: u8) {
         let indentation = self.indentation_for_pending_fragment();
         self.pending_line.range.extend_by(FragmentIndex(1));
         self.pending_line.bounds.size.inline = self.pending_line.bounds.size.inline +
@@ -726,6 +739,7 @@ impl LineBreaker {
         self.pending_line.bounds.size.block =
             self.new_block_size_for_line(&fragment, layout_context);
         self.new_fragments.push(fragment);
+        self.bidi_levels.push(bidi_level);
     }
 
     /// Returns the indentation that needs to be applied before the fragment we're reflowing.
