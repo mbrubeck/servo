@@ -381,8 +381,6 @@ impl LineBreaker {
             Some(fragment) => fragment,
         };
 
-        // TODO (mbrubeck): If fragment straddles a visual run boundary, split it.
-
         loop {
             let candidate = match self.next_fragment(old_fragment_iter) {
                 None => return Some(result),

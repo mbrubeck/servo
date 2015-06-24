@@ -44,17 +44,7 @@ impl TextRunScanner {
                          font_context: &mut FontContext,
                          mut fragments: LinkedList<Fragment>)
                          -> InlineFragments {
-        println!("     scan_for_runs");
         debug!("TextRunScanner: scanning {} fragments for text runs...", fragments.len());
-
-        // TODO (mbrubeck): Insert control characters based CSS unicode-bidi property.
-        let paragraph = text(&fragments);
-        println!("paragraph ({} bytes): {:?}", paragraph.len(), paragraph); // XXX mbrubeck
-
-        // TODO (mbrubeck): Set paragraph level based on CSS direction property.
-        let info = ::unicode_bidi::process_paragraph(&paragraph, None);
-        println!("  levels {:?}", info.levels); // XXX mbrubeck
-        let mut levels_index = 0;
 
         // FIXME(pcwalton): We want to be sure not to allocate multiple times, since this is a
         // performance-critical spot, but this may overestimate and allocate too much memory.
@@ -76,8 +66,6 @@ impl TextRunScanner {
             // Flush that clump to the list of fragments we're building up.
             last_whitespace = self.flush_clump_to_list(font_context,
                                                        &mut new_fragments,
-                                                       &mut levels_index,
-                                                       &info.levels,
                                                        last_whitespace);
         }
 
@@ -96,8 +84,6 @@ impl TextRunScanner {
     fn flush_clump_to_list(&mut self,
                            font_context: &mut FontContext,
                            out_fragments: &mut Vec<Fragment>,
-                           bidi_levels_index: &mut usize,
-                           bidi_levels: &[u8],
                            mut last_whitespace: bool)
                            -> bool {
         debug!("TextRunScanner: flushing {} fragments in range", self.clump.len());
@@ -154,13 +140,6 @@ impl TextRunScanner {
                 let mut flush = false;
 
                 for character in text.chars() {
-                    // TODO (mbrubeck): Remove this and do splitting in scan_for_lines instead?
-                    let bidi_level = bidi_levels[*bidi_levels_index];
-                    if run_info.bidi_level != bidi_level {
-                        run_info.bidi_level = bidi_level;
-                        flush = true;
-                    }
-
                     // Search for the first font in this font group that contains a glyph for this
                     // character.
                     for font_index in 0..fontgroup.fonts.len() {
@@ -200,7 +179,6 @@ impl TextRunScanner {
 
                     // Consume this character.
                     end_position += character.len_utf8();
-                    *bidi_levels_index += 1;
                 }
 
                 // If the mapping is zero-length, don't flush it.
@@ -244,7 +222,7 @@ impl TextRunScanner {
             // FIXME(https://github.com/rust-lang/rust/issues/23338)
             run_info_list.into_iter().map(|run_info| {
                 let mut font = fontgroup.fonts.get(run_info.font_index).unwrap().borrow_mut();
-                Arc::new(box TextRun::new(&mut *font, run_info.text, run_info.bidi_level, &options))
+                Arc::new(box TextRun::new(&mut *font, run_info.text, &options))
             }).collect::<Vec<_>>()
         };
 
@@ -314,14 +292,6 @@ fn bounding_box_for_run_metrics(metrics: &RunMetrics, writing_mode: WritingMode)
         metrics.bounding_box.size.width,
         metrics.bounding_box.size.height)
 
-}
-
-/// Returns the concatened text of a list of unscanned text fragments.
-fn text(fragments: &LinkedList<Fragment>) -> String {
-    fragments.iter().map(|fragment| match fragment.specific {
-        SpecificFragmentInfo::UnscannedText(ref info) => &info.text[..],
-        _ => panic!("Expected an unscanned text fragment!")
-    }).collect()
 }
 
 /// Returns the metrics of the font represented by the given `FontStyle`, respectively.
@@ -395,8 +365,6 @@ struct RunInfo {
     font_index: usize,
     /// A cached copy of the number of Unicode characters in the text run.
     character_length: usize,
-    /// The bidirectional embedding level.
-    bidi_level: u8,
 }
 
 impl RunInfo {
@@ -405,7 +373,6 @@ impl RunInfo {
             text: String::new(),
             font_index: 0,
             character_length: 0,
-            bidi_level: 0,
         }
     }
 }
