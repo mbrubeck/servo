@@ -381,7 +381,6 @@ impl<'a> FlowConstructor<'a> {
                                               flow_list: &mut Vec<FlowRef>,
                                               whitespace_stripping: WhitespaceStrippingMode,
                                               node: &ThreadSafeLayoutNode) {
-        println!("  flush_inline_fragments_to_flow_or_list");
         let mut fragments = fragment_accumulator.to_intermediate_inline_fragments();
         if fragments.is_empty() {
             return
@@ -471,7 +470,6 @@ impl<'a> FlowConstructor<'a> {
                                                            &mut InlineFragmentsAccumulator,
                                                            abs_descendants: &mut Descendants,
                                                            first_fragment: &mut bool) {
-        println!("build_flow_for_block_starting_with_fragments");
         match kid.swap_out_construction_result() {
             ConstructionResult::None => {}
             ConstructionResult::Flow(mut kid_flow, kid_abs_descendants) => {

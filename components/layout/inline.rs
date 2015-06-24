@@ -256,10 +256,8 @@ impl LineBreaker {
 
         // TODO (mbrubeck): Cache these?
         let text = flow.fragments.text();
-        // TODO (mbrubeck): set the paragraph level based on the 'direction' property.
-        let info = ::unicode_bidi::process_paragraph(&text, None);
-
-        println!("text ({} bytes): {:?}", text.len(), text); // XXX mbrubeck
+        let para_level = if flow.base.writing_mode.is_bidi_ltr() { 0 } else { 1 };
+        let info = ::unicode_bidi::process_paragraph(&text, Some(para_level));
 
         // Create our fragment iterator.
         debug!("LineBreaker: scanning for lines, {} fragments", flow.fragments.len());
@@ -277,7 +275,6 @@ impl LineBreaker {
 
         let mut lines = mem::replace(&mut self.lines, Vec::new());
 
-        // TODO (mbrubeck): Re-order each line into visual order.
         for line in &mut lines {
             let range = line.range.begin().to_usize()..line.range.end().to_usize();
             line.visual_runs =
@@ -315,7 +312,11 @@ impl LineBreaker {
                 Some(fragment) => fragment,
             };
 
-            let bidi_level = bidi_info.levels[start_char.to_usize()];
+            let bidi_level = if start_char.to_usize() < bidi_info.levels.len() {
+                bidi_info.levels[start_char.to_usize()]
+            } else {
+                bidi_info.para_level
+            };
 
             let mut new_fragment = None;
             match fragment.specific {
@@ -330,7 +331,6 @@ impl LineBreaker {
                         }
                         if boundary > start_char {
                             // Found a level run that ends inside this fragment.
-                            println!("  break at {:?}", boundary);
                             let split = boundary - start_char + info.range.begin();
                             let (head, tail) = fragment.split_at_character_index(split);
 
@@ -1028,20 +1028,37 @@ impl InlineFlow {
             text_align::T::left | text_align::T::right => unreachable!()
         }
 
-        // XXX mbrubeck: Adjust for direction?
-        //for fragment_index in line.range.each_index().rev() {
-        for fragment_index in line.range.each_index() {
-            let fragment = fragments.get_mut(fragment_index.to_usize());
-            inline_start_position_for_fragment = inline_start_position_for_fragment +
-                fragment.margin.inline_start;
-            fragment.border_box = LogicalRect::new(fragment.style.writing_mode,
-                                                   inline_start_position_for_fragment,
-                                                   fragment.border_box.start.b,
-                                                   fragment.border_box.size.inline,
-                                                   fragment.border_box.size.block);
-            fragment.update_late_computed_inline_position_if_necessary();
-            inline_start_position_for_fragment = inline_start_position_for_fragment +
-                fragment.border_box.size.inline + fragment.margin.inline_end;
+        // Lay out the fragments in visual order.
+        let run_count = line.visual_runs.len();
+        for run_idx in 0..run_count {
+            let (range, level) = if is_ltr {
+                line.visual_runs[run_idx]
+            } else {
+                line.visual_runs[run_count - run_idx - 1]
+            };
+
+            // If the bidi embedding direction is opposite the layout direction, lay out this
+            // run in reverse order.
+            let reverse = is_ltr == ::unicode_bidi::is_rtl(level);
+            let (begin, end, step) = if reverse {
+                (range.end().get() - 1, range.begin().get() - 1, -1)
+            } else {
+                (range.begin().get(), range.end().get(), 1)
+            };
+
+            for fragment_index in (begin..end).step_by(step) {
+                let fragment = fragments.get_mut(fragment_index as usize);
+                inline_start_position_for_fragment = inline_start_position_for_fragment +
+                    fragment.margin.inline_start;
+                fragment.border_box = LogicalRect::new(fragment.style.writing_mode,
+                                                       inline_start_position_for_fragment,
+                                                       fragment.border_box.start.b,
+                                                       fragment.border_box.size.inline,
+                                                       fragment.border_box.size.block);
+                fragment.update_late_computed_inline_position_if_necessary();
+                inline_start_position_for_fragment = inline_start_position_for_fragment +
+                    fragment.border_box.size.inline + fragment.margin.inline_end;
+            }
         }
     }
 

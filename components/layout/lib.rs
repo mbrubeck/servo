@@ -9,6 +9,7 @@
 #![feature(filling_drop)]
 #![feature(plugin)]
 #![feature(std_misc)]
+#![feature(step_by)]
 #![feature(str_char)]
 #![feature(unsafe_no_drop_flag)]
 
