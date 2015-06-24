@@ -66,7 +66,7 @@ static FONT_SUPERSCRIPT_OFFSET_RATIO: f32 = 0.34;
 /// with a float or a horizontal wall of the containing block. The block-start
 /// inline-start corner of the green zone is the same as that of the line, but
 /// the green zone can be taller and wider than the line itself.
-#[derive(RustcEncodable, Debug, Copy, Clone)]
+#[derive(RustcEncodable, Debug, Clone)]
 pub struct Line {
     /// A range of line indices that describe line breaks.
     ///
@@ -94,6 +94,8 @@ pub struct Line {
     /// |----------|-------------|-------------|----------|
     /// | 'I like' | 'truffles,' | '<img> yes' | 'I do.'  |
     pub range: Range<FragmentIndex>,
+
+    pub visual_runs: Vec<(Range<FragmentIndex>, u8)>,
 
     /// The bounds are the exact position and extents of the line with respect
     /// to the parent box.
@@ -175,7 +177,7 @@ struct LineBreaker {
     /// The resulting fragment list for the flow, consisting of possibly-broken fragments.
     new_fragments: Vec<Fragment>,
     /// The bidi embedding level of each fragment in `new_fragments`
-    bidi_levels: Vec<u8>,
+    fragment_levels: Vec<u8>,
     /// The next fragment or fragments that we need to work on.
     work_list: VecDeque<Fragment>,
     /// The line we're currently working on.
@@ -203,10 +205,11 @@ impl LineBreaker {
            -> LineBreaker {
         LineBreaker {
             new_fragments: Vec::new(),
-            bidi_levels: Vec::new(),
+            fragment_levels: Vec::new(),
             work_list: VecDeque::new(),
             pending_line: Line {
                 range: Range::empty(),
+                visual_runs: Vec::new(),
                 bounds: LogicalRect::zero(float_context.writing_mode),
                 green_zone: LogicalSize::zero(float_context.writing_mode),
                 inline_metrics: InlineMetrics::new(minimum_block_size_above_baseline,
@@ -226,7 +229,7 @@ impl LineBreaker {
     fn reset_scanner(&mut self) {
         self.lines = Vec::new();
         self.new_fragments = Vec::new();
-        self.bidi_levels = Vec::new();
+        self.fragment_levels = Vec::new();
         self.cur_b = Au(0);
         self.reset_line();
     }
@@ -234,6 +237,7 @@ impl LineBreaker {
     /// Reinitializes the pending line to blank data.
     fn reset_line(&mut self) {
         self.pending_line.range.reset(FragmentIndex(0), FragmentIndex(0));
+        self.pending_line.visual_runs.clear();
         self.pending_line.bounds = LogicalRect::new(self.floats.writing_mode,
                                                     Au(0),
                                                     self.cur_b,
@@ -271,14 +275,24 @@ impl LineBreaker {
         // Do the reflow.
         self.reflow_fragments(old_fragment_iter, flow, layout_context, &info);
 
+        let mut lines = mem::replace(&mut self.lines, Vec::new());
+
         // TODO (mbrubeck): Re-order each line into visual order.
-        for line in &mut self.lines {
+        for line in &mut lines {
+            let range = line.range.begin().to_usize()..line.range.end().to_usize();
+            line.visual_runs =
+                ::unicode_bidi::visual_runs(range, info.para_level, info.max_level,
+                                            &self.fragment_levels)
+                .iter().map(|run| (Range::new(FragmentIndex(run.start as isize),
+                                              FragmentIndex(run.len() as isize)),
+                                   self.fragment_levels[run.start]))
+                .collect();
         }
 
         // Place the fragments back into the flow.
         old_fragments.fragments = mem::replace(&mut self.new_fragments, vec![]);
         flow.fragments = old_fragments;
-        flow.lines = mem::replace(&mut self.lines, Vec::new());
+        flow.lines = lines;
     }
 
     /// Reflows the given fragments, which have been plucked out of the inline flow.
@@ -300,6 +314,8 @@ impl LineBreaker {
                 None => break,
                 Some(fragment) => fragment,
             };
+
+            let bidi_level = bidi_info.levels[start_char.to_usize()];
 
             let mut new_fragment = None;
             match fragment.specific {
@@ -347,8 +363,6 @@ impl LineBreaker {
                     WRAP_ON_NEWLINE_INLINE_REFLOW_FLAG | NO_WRAP_INLINE_REFLOW_FLAG
                 }
             };
-
-            let bidi_level = bidi_info.levels[start_char.to_usize()];
 
             // Try to append the fragment.
             self.reflow_fragment(fragment, flow, layout_context, flags, bidi_level);
@@ -423,7 +437,7 @@ impl LineBreaker {
     fn flush_current_line(&mut self) {
         debug!("LineBreaker: flushing line {}: {:?}", self.lines.len(), self.pending_line);
         self.strip_trailing_whitespace_from_pending_line_if_necessary();
-        self.lines.push(self.pending_line);
+        self.lines.push(self.pending_line.clone());
         self.cur_b = self.pending_line.bounds.start.b + self.pending_line.bounds.size.block;
         self.reset_line();
     }
@@ -739,7 +753,7 @@ impl LineBreaker {
         self.pending_line.bounds.size.block =
             self.new_block_size_for_line(&fragment, layout_context);
         self.new_fragments.push(fragment);
-        self.bidi_levels.push(bidi_level);
+        self.fragment_levels.push(bidi_level);
     }
 
     /// Returns the indentation that needs to be applied before the fragment we're reflowing.
