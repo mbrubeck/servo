@@ -28,6 +28,18 @@ use util::linked_list::split_off_head;
 use util::logical_geometry::{LogicalSize, WritingMode};
 use util::range::{Range, RangeIndex};
 
+/// Returns the concatened text of a list of unscanned text fragments.
+fn text(fragments: &LinkedList<Fragment>) -> String {
+    fragments.iter().map(|fragment| match fragment.specific {
+        SpecificFragmentInfo::UnscannedText(ref info) => &info.text[..],
+        _ => {
+            // TODO (mbrubeck): insert neutral or control character
+            " "
+        }
+    }).collect()
+}
+
+
 /// A stack-allocated object for scanning an inline flow into `TextRun`-containing `TextFragment`s.
 pub struct TextRunScanner {
     pub clump: LinkedList<Fragment>,
@@ -46,10 +58,23 @@ impl TextRunScanner {
                          -> InlineFragments {
         debug!("TextRunScanner: scanning {} fragments for text runs...", fragments.len());
 
+        let paragraph = text(&fragments);
+        println!("text: {}", paragraph);
+
+        debug_assert!(!fragments.is_empty());
+        let para_level = if fragments.front().unwrap().style.writing_mode.is_bidi_ltr() {
+            0
+        } else {
+            1
+        };
+        let info = ::unicode_bidi::process_paragraph(&paragraph, Some(para_level));
+
         // FIXME(pcwalton): We want to be sure not to allocate multiple times, since this is a
         // performance-critical spot, but this may overestimate and allocate too much memory.
         let mut new_fragments = Vec::with_capacity(fragments.len());
         let mut last_whitespace = true;
+        let mut byte_index = 0;
+
         while !fragments.is_empty() {
             // Create a clump.
             split_first_fragment_at_newline_if_necessary(&mut fragments);
@@ -66,6 +91,8 @@ impl TextRunScanner {
             // Flush that clump to the list of fragments we're building up.
             last_whitespace = self.flush_clump_to_list(font_context,
                                                        &mut new_fragments,
+                                                       &mut byte_index,
+                                                       &info.levels,
                                                        last_whitespace);
         }
 
@@ -84,6 +111,8 @@ impl TextRunScanner {
     fn flush_clump_to_list(&mut self,
                            font_context: &mut FontContext,
                            out_fragments: &mut Vec<Fragment>,
+                           byte_index: &mut usize,
+                           bidi_levels: &[u8],
                            mut last_whitespace: bool)
                            -> bool {
         debug!("TextRunScanner: flushing {} fragments in range", self.clump.len());
@@ -137,48 +166,48 @@ impl TextRunScanner {
                 };
 
                 let (mut start_position, mut end_position) = (0, 0);
-                let mut flush = false;
 
                 for character in text.chars() {
+                    let bidi_level = bidi_levels[*byte_index];
+
                     // Search for the first font in this font group that contains a glyph for this
                     // character.
-                    for font_index in 0..fontgroup.fonts.len() {
-                        if font_index < fontgroup.fonts.len() - 1 &&
-                                fontgroup.fonts
-                                         .get(font_index)
-                                         .unwrap()
-                                         .borrow()
-                                         .glyph_index(character)
-                                         .is_none() {
-                            continue
+                    let mut font_index = 0;
+                    while font_index < fontgroup.fonts.len() - 1 {
+                        if fontgroup.fonts.get(font_index).unwrap().borrow()
+                                          .glyph_index(character)
+                                          .is_some() {
+                            break
                         }
-
-                        // We found the font we want to use.
-                        if run_info.font_index != font_index {
-                            run_info.font_index = font_index;
-                            flush = true;
-                        }
+                        font_index += 1;
                     }
 
                     // Now, if necessary, flush the mapping we were building up.
-                    if flush && run_info.text.len() > 0 {
-                        mapping.flush(&mut mappings,
-                                      &mut run_info,
-                                      &**text,
-                                      compression,
-                                      text_transform,
-                                      &mut last_whitespace,
-                                      &mut start_position,
-                                      end_position);
-                        run_info_list.push(run_info);
-                        run_info = RunInfo::new();
-                        mapping = RunMapping::new(&run_info_list[..],
-                                                  &run_info,
-                                                  fragment_index);
+                    if run_info.bidi_level != bidi_level ||
+                       run_info.font_index != font_index
+                    {
+                        if run_info.text.len() > 0 {
+                            mapping.flush(&mut mappings,
+                                          &mut run_info,
+                                          &**text,
+                                          compression,
+                                          text_transform,
+                                          &mut last_whitespace,
+                                          &mut start_position,
+                                          end_position);
+                            run_info_list.push(run_info);
+                            run_info = RunInfo::new();
+                            mapping = RunMapping::new(&run_info_list[..],
+                                                      &run_info,
+                                                      fragment_index);
+                        }
+                        run_info.font_index = font_index;
+                        run_info.bidi_level = bidi_level;
                     }
 
                     // Consume this character.
                     end_position += character.len_utf8();
+                    *byte_index += character.len_utf8();
                 }
 
                 // If the mapping is zero-length, don't flush it.
@@ -220,9 +249,11 @@ impl TextRunScanner {
             };
 
             // FIXME(https://github.com/rust-lang/rust/issues/23338)
+            println!("  runs");
             run_info_list.into_iter().map(|run_info| {
+                println!("    {}. {}", run_info.bidi_level, run_info.text);
                 let mut font = fontgroup.fonts.get(run_info.font_index).unwrap().borrow_mut();
-                Arc::new(box TextRun::new(&mut *font, run_info.text, &options))
+                Arc::new(box TextRun::new(&mut *font, run_info.text, &options, run_info.bidi_level))
             }).collect::<Vec<_>>()
         };
 
@@ -365,6 +396,8 @@ struct RunInfo {
     font_index: usize,
     /// A cached copy of the number of Unicode characters in the text run.
     character_length: usize,
+    /// The bidirection embedding level of this text run.
+    bidi_level: u8,
 }
 
 impl RunInfo {
@@ -373,6 +406,7 @@ impl RunInfo {
             text: String::new(),
             font_index: 0,
             character_length: 0,
+            bidi_level: 0,
         }
     }
 }
