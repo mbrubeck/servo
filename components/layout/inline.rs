@@ -28,7 +28,7 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::mem;
 use std::sync::Arc;
-use std::u16;
+use std::isize;
 use style::computed_values::{display, overflow_x, position, text_align, text_justify};
 use style::computed_values::{text_overflow, vertical_align, white_space};
 use style::properties::ComputedValues;
@@ -647,7 +647,7 @@ impl LineBreaker {
                              line_flush_mode: LineFlushMode) {
         let indentation = self.indentation_for_pending_fragment();
         if self.pending_line_is_empty() {
-            assert!(self.new_fragments.len() <= (u16::MAX as usize));
+            assert!(self.new_fragments.len() <= (isize::MAX as usize));
             self.pending_line.range.reset(FragmentIndex(self.new_fragments.len() as isize),
                                           FragmentIndex(0));
         }

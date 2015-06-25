@@ -66,7 +66,6 @@ impl TextRunScanner {
             1
         };
         let info = ::unicode_bidi::process_paragraph(&paragraph, Some(para_level));
-        println!("  levels: {:?}", info.levels);
 
         // FIXME(pcwalton): We want to be sure not to allocate multiple times, since this is a
         // performance-critical spot, but this may overestimate and allocate too much memory.
