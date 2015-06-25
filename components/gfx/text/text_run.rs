@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use font::{Font, FontHandleMethods, FontMetrics, IS_WHITESPACE_SHAPING_FLAG, RTL_FLAG, RunMetrics};
+use font::{Font, FontHandleMethods, FontMetrics, IS_WHITESPACE_SHAPING_FLAG, RunMetrics};
 use font::{ShapingOptions};
 use platform::font_template::FontTemplateData;
 use text::glyph::{CharIndex, GlyphStore};
@@ -190,7 +190,7 @@ impl<'a> Iterator for LineIterator<'a> {
 
 impl<'a> TextRun {
     pub fn new(font: &mut Font, text: String, options: &ShapingOptions, bidi_level: u8) -> TextRun {
-        let glyphs = TextRun::break_and_shape(font, &text, options, bidi_level);
+        let glyphs = TextRun::break_and_shape(font, &text, options);
         let run = TextRun {
             text: Arc::new(text),
             font_metrics: font.metrics.clone(),
@@ -202,7 +202,7 @@ impl<'a> TextRun {
         return run;
     }
 
-    pub fn break_and_shape(font: &mut Font, text: &str, options: &ShapingOptions, bidi_level: u8)
+    pub fn break_and_shape(font: &mut Font, text: &str, options: &ShapingOptions)
                            -> Vec<GlyphRun> {
         // TODO(Issue #230): do a better job. See Gecko's LineBreaker.
         let mut glyphs = vec!();
@@ -243,9 +243,6 @@ impl<'a> TextRun {
                 let mut options = *options;
                 if !cur_slice_is_whitespace {
                     options.flags.insert(IS_WHITESPACE_SHAPING_FLAG);
-                }
-                if ::unicode_bidi::is_rtl(bidi_level) {
-                    options.flags.insert(RTL_FLAG);
                 }
 
                 glyphs.push(GlyphRun {

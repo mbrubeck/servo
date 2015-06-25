@@ -10,7 +10,7 @@ use fragment::{Fragment, SpecificFragmentInfo, ScannedTextFragmentInfo, Unscanne
 use inline::InlineFragments;
 
 use gfx::font::{DISABLE_KERNING_SHAPING_FLAG, FontMetrics, IGNORE_LIGATURES_SHAPING_FLAG};
-use gfx::font::{RunMetrics, ShapingFlags, ShapingOptions};
+use gfx::font::{RTL_FLAG, RunMetrics, ShapingFlags, ShapingOptions};
 use gfx::font_context::FontContext;
 use gfx::text::glyph::CharIndex;
 use gfx::text::text_run::TextRun;
@@ -68,6 +68,7 @@ impl TextRunScanner {
             1
         };
         let info = ::unicode_bidi::process_paragraph(&paragraph, Some(para_level));
+        println!("  levels: {:?}", info.levels);
 
         // FIXME(pcwalton): We want to be sure not to allocate multiple times, since this is a
         // performance-critical spot, but this may overestimate and allocate too much memory.
@@ -168,8 +169,6 @@ impl TextRunScanner {
                 let (mut start_position, mut end_position) = (0, 0);
 
                 for character in text.chars() {
-                    let bidi_level = bidi_levels[*byte_index];
-
                     // Search for the first font in this font group that contains a glyph for this
                     // character.
                     let mut font_index = 0;
@@ -182,11 +181,11 @@ impl TextRunScanner {
                         font_index += 1;
                     }
 
+                    let bidi_level = bidi_levels[*byte_index];
+
                     // Now, if necessary, flush the mapping we were building up.
-                    if run_info.bidi_level != bidi_level ||
-                       run_info.font_index != font_index
-                    {
-                        if run_info.text.len() > 0 {
+                    if run_info.font_index != font_index || run_info.bidi_level != bidi_level {
+                        if end_position > start_position {
                             mapping.flush(&mut mappings,
                                           &mut run_info,
                                           &**text,
@@ -195,6 +194,8 @@ impl TextRunScanner {
                                           &mut last_whitespace,
                                           &mut start_position,
                                           end_position);
+                        }
+                        if run_info.text.len() > 0 {
                             run_info_list.push(run_info);
                             run_info = RunInfo::new();
                             mapping = RunMapping::new(&run_info_list[..],
@@ -249,9 +250,11 @@ impl TextRunScanner {
             };
 
             // FIXME(https://github.com/rust-lang/rust/issues/23338)
-            println!("  runs");
             run_info_list.into_iter().map(|run_info| {
-                println!("    {}. {}", run_info.bidi_level, run_info.text);
+                let mut options = options;
+                if ::unicode_bidi::is_rtl(run_info.bidi_level) {
+                    options.flags.insert(RTL_FLAG);
+                }
                 let mut font = fontgroup.fonts.get(run_info.font_index).unwrap().borrow_mut();
                 Arc::new(box TextRun::new(&mut *font, run_info.text, &options, run_info.bidi_level))
             }).collect::<Vec<_>>()

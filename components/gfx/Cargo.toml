@@ -65,7 +65,6 @@ rand = "*"
 harfbuzz = "0.1"
 smallvec = "0.1"
 string_cache = "0.1"
-unicode-bidi = "0.1"
 
 [target.x86_64-apple-darwin.dependencies]
 core-foundation = "*"
