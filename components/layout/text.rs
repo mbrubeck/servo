@@ -57,11 +57,9 @@ impl TextRunScanner {
                          mut fragments: LinkedList<Fragment>)
                          -> InlineFragments {
         debug!("TextRunScanner: scanning {} fragments for text runs...", fragments.len());
+        debug_assert!(!fragments.is_empty());
 
         let paragraph = text(&fragments);
-        println!("text: {}", paragraph);
-
-        debug_assert!(!fragments.is_empty());
         let para_level = if fragments.front().unwrap().style.writing_mode.is_bidi_ltr() {
             0
         } else {

@@ -360,7 +360,6 @@ impl LineBreaker {
                 Some(fragment) => fragment,
             };
 
-            // TODO (mbrubeck): Don't merge fragments that were split on bidi level boundaries.
             let need_to_merge = match (&mut result.specific, &candidate.specific) {
                 (&mut SpecificFragmentInfo::ScannedText(ref mut result_info),
                  &SpecificFragmentInfo::ScannedText(ref candidate_info)) => {
@@ -767,24 +766,6 @@ impl InlineFragments {
     /// A convenience function to return a mutable reference to the fragment at a given index.
     pub fn get_mut<'a>(&'a mut self, index: usize) -> &'a mut Fragment {
         &mut self.fragments[index]
-    }
-
-    pub fn text(&self) -> String {
-        let mut text = String::new();
-        for fragment in &self.fragments {
-            match fragment.specific {
-                SpecificFragmentInfo::ScannedText(ref info) => {
-                    let begin = info.range.begin().to_usize();
-                    let len = info.range.length().to_usize();
-                    // FIXME (mbrubeck): This is terribly inefficient. Can we use byte indices
-                    // instead?
-                    text.extend(info.run.text.chars().skip(begin).take(len));
-                }
-                // TODO (mbrubeck) Insert neutral or control characters for non-text fragments?
-                _ => continue
-            }
-        }
-        text
     }
 }
 
