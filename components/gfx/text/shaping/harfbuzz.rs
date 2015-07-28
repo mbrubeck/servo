@@ -234,6 +234,9 @@ impl ShaperMethods for Shaper {
             } else {
                 HB_DIRECTION_LTR
             });
+            harfbuzz::RUST_hb_buffer_set_script(hb_buffer,
+                                                harfbuzz::HB_SCRIPT_ARABIC
+                                                as harfbuzz::hb_script_t);
 
             RUST_hb_buffer_add_utf8(hb_buffer,
                                     text.as_ptr() as *const c_char,
@@ -258,6 +261,54 @@ impl ShaperMethods for Shaper {
                     _end: RUST_hb_buffer_get_length(hb_buffer),
                 })
             }
+            features.push(hb_feature_t {
+                _tag: hb_tag!('c','c','m','p'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('c','l','i','g'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('r','l','i','g'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('c','u','r','s'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('i','s','o','l'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('i','n','i','t'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('m','e','d','i'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('f','i','n','a'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
 
             RUST_hb_shape(self.hb_font, hb_buffer, features.as_mut_ptr(), features.len() as u32);
             self.save_glyph_results(text, options, glyphs, hb_buffer);
