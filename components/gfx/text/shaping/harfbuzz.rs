@@ -262,7 +262,26 @@ impl ShaperMethods for Shaper {
                 })
             }
             features.push(hb_feature_t {
+                _tag: hb_tag!('k','e','r','n'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
                 _tag: hb_tag!('c','c','m','p'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            features.push(hb_feature_t {
+                _tag: hb_tag!('r','l','i','g'),
+                _value: 1,
+                _start: 0,
+                _end: RUST_hb_buffer_get_length(hb_buffer),
+            });
+            /*
+            features.push(hb_feature_t {
+                _tag: hb_tag!('c','u','r','s'),
                 _value: 1,
                 _start: 0,
                 _end: RUST_hb_buffer_get_length(hb_buffer),
@@ -274,23 +293,12 @@ impl ShaperMethods for Shaper {
                 _end: RUST_hb_buffer_get_length(hb_buffer),
             });
             features.push(hb_feature_t {
-                _tag: hb_tag!('r','l','i','g'),
-                _value: 1,
-                _start: 0,
-                _end: RUST_hb_buffer_get_length(hb_buffer),
-            });
-            features.push(hb_feature_t {
-                _tag: hb_tag!('c','u','r','s'),
-                _value: 1,
-                _start: 0,
-                _end: RUST_hb_buffer_get_length(hb_buffer),
-            });
-            features.push(hb_feature_t {
                 _tag: hb_tag!('i','s','o','l'),
                 _value: 1,
                 _start: 0,
                 _end: RUST_hb_buffer_get_length(hb_buffer),
             });
+            */
             features.push(hb_feature_t {
                 _tag: hb_tag!('i','n','i','t'),
                 _value: 1,

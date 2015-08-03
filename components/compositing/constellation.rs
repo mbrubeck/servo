@@ -475,6 +475,13 @@ impl<LTF: LayoutTaskFactory, STF: ScriptTaskFactory> Constellation<LTF, STF> {
                 );
                 sender.send(result).unwrap();
             }
+            ConstellationMsg::SetClipboardContents(s) => {
+                if let Some(ref mut ctx) = self.clipboard_ctx {
+                    if let Err(e) = ctx.set_contents(s) {
+                        debug!("Error setting clipboard contents ({})", e);
+                    }
+                }
+            }
             ConstellationMsg::WebDriverCommand(command) => {
                 debug!("constellation got webdriver command message");
                 self.handle_webdriver_msg(command);
@@ -506,6 +513,10 @@ impl<LTF: LayoutTaskFactory, STF: ScriptTaskFactory> Constellation<LTF, STF> {
             ConstellationMsg::CreateWebGLPaintTask(size, attributes, sender) => {
                 debug!("constellation got create-WebGL-paint-task message");
                 self.handle_create_webgl_paint_task_msg(&size, attributes, sender)
+            }
+            ConstellationMsg::NodeStatus(message) => {
+                debug!("constellation got NodeStatus message");
+                self.compositor_proxy.send(CompositorMsg::Status(message));
             }
         }
         true
@@ -942,12 +953,17 @@ impl<LTF: LayoutTaskFactory, STF: ScriptTaskFactory> Constellation<LTF, STF> {
             &mut self,
             size: &Size2D<i32>,
             attributes: GLContextAttributes,
-            response_sender: IpcSender<(IpcSender<CanvasMsg>, usize)>) {
-        let id = self.webgl_paint_tasks.len();
-        let (out_of_process_sender, in_process_sender) =
-            WebGLPaintTask::start(*size, attributes).unwrap();
-        self.webgl_paint_tasks.push(in_process_sender);
-        response_sender.send((out_of_process_sender, id)).unwrap()
+            response_sender: IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>) {
+        let response = match WebGLPaintTask::start(*size, attributes) {
+            Ok((out_of_process_sender, in_process_sender)) => {
+                let id = self.webgl_paint_tasks.len();
+                self.webgl_paint_tasks.push(in_process_sender);
+                Ok((out_of_process_sender, id))
+            },
+            Err(msg) => Err(msg.to_owned()),
+        };
+
+        response_sender.send(response).unwrap()
     }
 
     fn handle_webdriver_msg(&mut self, msg: WebDriverCommandMsg) {

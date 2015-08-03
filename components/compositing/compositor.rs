@@ -39,7 +39,7 @@ use msg::constellation_msg::{ConstellationChan, NavigationDirection};
 use msg::constellation_msg::{Key, KeyModifiers, KeyState, LoadData};
 use msg::constellation_msg::{PipelineId, WindowSizeData};
 use png;
-use profile_traits::mem::{self, Reporter, ReporterRequest};
+use profile_traits::mem::{self, Reporter, ReporterRequest, ReportKind};
 use profile_traits::time::{self, ProfilerCategory, profile};
 use script_traits::{ConstellationControlMsg, LayoutControlMsg, ScriptControlChan};
 use std::collections::HashMap;
@@ -420,6 +420,10 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.scroll_fragment_to_point(pipeline_id, layer_id, point);
             }
 
+            (Msg::Status(message), ShutdownState::NotShuttingDown) => {
+                self.window.status(message);
+            }
+
             (Msg::LoadStart(back, forward), ShutdownState::NotShuttingDown) => {
                 self.window.load_start(back, forward);
             }
@@ -501,11 +505,17 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             (Msg::CollectMemoryReports(reports_chan), ShutdownState::NotShuttingDown) => {
                 let mut reports = vec![];
                 let name = "compositor-task";
+                // These are both `ExplicitUnknownLocationSize` because the memory might be in the
+                // GPU or on the heap.
                 reports.push(mem::Report {
-                    path: path![name, "surface-map"], size: self.surface_map.mem(),
+                    path: path![name, "surface-map"],
+                    kind: ReportKind::ExplicitUnknownLocationSize,
+                    size: self.surface_map.mem(),
                 });
                 reports.push(mem::Report {
-                    path: path![name, "layer-tree"], size: self.scene.get_memory_usage(),
+                    path: path![name, "layer-tree"],
+                    kind: ReportKind::ExplicitUnknownLocationSize,
+                    size: self.scene.get_memory_usage(),
                 });
                 reports_chan.send(reports);
             }
@@ -530,7 +540,12 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.composite_if_necessary(CompositingReason::Animation);
             }
             AnimationState::AnimationCallbacksPresent => {
-                self.get_or_create_pipeline_details(pipeline_id).animation_callbacks_running = true;
+                if self.get_or_create_pipeline_details(pipeline_id).animation_callbacks_running {
+                    return
+                }
+                self.get_or_create_pipeline_details(pipeline_id).animation_callbacks_running =
+                    true;
+                self.tick_animations_for_pipeline(pipeline_id);
                 self.composite_if_necessary(CompositingReason::Animation);
             }
             AnimationState::NoAnimationsPresent => {
@@ -1072,11 +1087,13 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         for (pipeline_id, pipeline_details) in self.pipeline_details.iter() {
             if pipeline_details.animations_running ||
                pipeline_details.animation_callbacks_running {
-
-                self.constellation_chan.0.send(ConstellationMsg::TickAnimation(*pipeline_id))
-                                         .unwrap();
+                self.tick_animations_for_pipeline(*pipeline_id)
             }
         }
+    }
+
+    fn tick_animations_for_pipeline(&self, pipeline_id: PipelineId) {
+        self.constellation_chan.0.send(ConstellationMsg::TickAnimation(pipeline_id)).unwrap()
     }
 
     fn constrain_viewport(&mut self, pipeline_id: PipelineId, constraints: ViewportConstraints) {
@@ -1307,7 +1324,12 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         // have not requested a paint of the current epoch.
         // If a layer has sent a request for the current epoch, but it hasn't
         // arrived yet then this layer is waiting for a paint message.
-        if layer_data.requested_epoch == current_epoch && layer_data.painted_epoch != current_epoch {
+        //
+        // Also don't check the root layer, because the paint task won't paint
+        // anything for it after first layout.
+        if layer_data.id != LayerId::null() &&
+                layer_data.requested_epoch == current_epoch &&
+                layer_data.painted_epoch != current_epoch {
             return true;
         }
 

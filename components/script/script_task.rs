@@ -21,6 +21,7 @@
 
 use document_loader::{LoadType, DocumentLoader, NotifierData};
 use dom::bindings::cell::DOMRefCell;
+use dom::bindings::codegen::Bindings::AttrBinding::AttrMethods;
 use dom::bindings::codegen::Bindings::DocumentBinding::{DocumentMethods, DocumentReadyState};
 use dom::bindings::codegen::InheritTypes::{ElementCast, EventTargetCast, NodeCast, EventCast};
 use dom::bindings::conversions::FromJSValConvertible;
@@ -70,7 +71,7 @@ use net_traits::{ResourceTask, LoadConsumer, ControlMsg, Metadata};
 use net_traits::LoadData as NetLoadData;
 use net_traits::image_cache_task::{ImageCacheChan, ImageCacheTask, ImageCacheResult};
 use net_traits::storage_task::StorageTask;
-use profile_traits::mem::{self, Report, Reporter, ReporterRequest, ReportsChan};
+use profile_traits::mem::{self, Report, Reporter, ReporterRequest, ReportKind, ReportsChan};
 use string_cache::Atom;
 use util::str::DOMString;
 use util::task::spawn_named_with_send_on_failure;
@@ -88,7 +89,7 @@ use js::jsapi::{JS_GetRuntime, JS_SetGCCallback, JSGCStatus, JSAutoRequest, SetD
 use js::jsapi::{SetDOMProxyInformation, DOMProxyShadowsResult, HandleObject, HandleId, RootedValue};
 use js::jsval::UndefinedValue;
 use js::rust::Runtime;
-use url::Url;
+use url::{Url, UrlParser};
 
 use libc;
 use std::any::Any;
@@ -665,8 +666,9 @@ impl ScriptTask {
             }
         };
 
-        // Squash any pending resize, reflow, and mouse-move events in the queue.
+        // Squash any pending resize, reflow, animation tick, and mouse-move events in the queue.
         let mut mouse_move_event_index = None;
+        let mut animation_ticks = HashSet::new();
         loop {
             match event {
                 // This has to be handled before the ResizeMsg below,
@@ -681,6 +683,13 @@ impl ScriptTask {
                 }
                 MixedMessage::FromConstellation(ConstellationControlMsg::Viewport(id, rect)) => {
                     self.handle_viewport(id, rect);
+                }
+                MixedMessage::FromConstellation(ConstellationControlMsg::TickAllAnimations(
+                        pipeline_id)) => {
+                    if !animation_ticks.contains(&pipeline_id) {
+                        animation_ticks.insert(pipeline_id);
+                        sequential.push(event);
+                    }
                 }
                 MixedMessage::FromConstellation(ConstellationControlMsg::SendEvent(
                         _,
@@ -1042,18 +1051,44 @@ impl ScriptTask {
             let rt = JS_GetRuntime(cx);
             let mut stats = ::std::mem::zeroed();
             if CollectServoSizes(rt, &mut stats) {
-                let mut report = |mut path_suffix, size| {
-                    let mut path = path!["pages", path_seg, "js"];
+                let mut report = |mut path_suffix, kind, size| {
+                    let mut path = path![path_seg, "js"];
                     path.append(&mut path_suffix);
-                    reports.push(Report { path: path, size: size as usize })
+                    reports.push(Report {
+                        path: path,
+                        kind: kind,
+                        size: size as usize,
+                    })
                 };
 
-                report(path!["gc-heap", "used"], stats.gcHeapUsed);
-                report(path!["gc-heap", "unused"], stats.gcHeapUnused);
-                report(path!["gc-heap", "admin"], stats.gcHeapAdmin);
-                report(path!["gc-heap", "decommitted"], stats.gcHeapDecommitted);
-                report(path!["malloc-heap"], stats.mallocHeap);
-                report(path!["non-heap"], stats.nonHeap);
+                // A note about possibly confusing terminology: the JS GC "heap" is allocated via
+                // mmap/VirtualAlloc, which means it's not on the malloc "heap", so we use
+                // `ExplicitNonHeapSize` as its kind.
+
+                report(path!["gc-heap", "used"],
+                       ReportKind::ExplicitNonHeapSize,
+                       stats.gcHeapUsed);
+
+                report(path!["gc-heap", "unused"],
+                       ReportKind::ExplicitNonHeapSize,
+                       stats.gcHeapUnused);
+
+                report(path!["gc-heap", "admin"],
+                       ReportKind::ExplicitNonHeapSize,
+                       stats.gcHeapAdmin);
+
+                report(path!["gc-heap", "decommitted"],
+                       ReportKind::ExplicitNonHeapSize,
+                       stats.gcHeapDecommitted);
+
+                // SpiderMonkey uses the system heap, not jemalloc.
+                report(path!["malloc-heap"],
+                       ReportKind::ExplicitSystemHeapSize,
+                       stats.mallocHeap);
+
+                report(path!["non-heap"],
+                       ReportKind::ExplicitNonHeapSize,
+                       stats.nonHeap);
             }
         }
         reports
@@ -1064,7 +1099,7 @@ impl ScriptTask {
         for it_page in self.root_page().iter() {
             urls.push(it_page.document().url().serialize());
         }
-        let path_seg = format!("url({})", urls.connect(", "));
+        let path_seg = format!("url({})", urls.join(", "));
         let reports = ScriptTask::get_reports(self.get_cx(), path_seg);
         reports_chan.send(reports);
     }
@@ -1498,11 +1533,48 @@ impl ScriptTask {
                 }
                 let page = get_page(&self.root_page(), pipeline_id);
                 let document = page.document();
+
+                let mut prev_mouse_over_targets: RootedVec<JS<Node>> = RootedVec::new();
+                for target in self.mouse_over_targets.borrow_mut().iter() {
+                    prev_mouse_over_targets.push(target.clone());
+                }
+
                 // We temporarily steal the list of targets over which the mouse is to pass it to
                 // handle_mouse_move_event() in a safe RootedVec container.
                 let mut mouse_over_targets = RootedVec::new();
                 std_mem::swap(&mut *self.mouse_over_targets.borrow_mut(), &mut *mouse_over_targets);
                 document.r().handle_mouse_move_event(self.js_runtime.rt(), point, &mut mouse_over_targets);
+
+                // Notify Constellation about anchors that are no longer mouse over targets.
+                for target in prev_mouse_over_targets.iter() {
+                    if !mouse_over_targets.contains(target) {
+                        if target.root().r().is_anchor_element() {
+                            let event = ConstellationMsg::NodeStatus(None);
+                            let ConstellationChan(ref chan) = self.constellation_chan;
+                            chan.send(event).unwrap();
+                            break;
+                        }
+                    }
+                }
+
+                // Notify Constellation about the topmost anchor mouse over target.
+                for target in mouse_over_targets.iter() {
+                    let target = target.root();
+                    if target.r().is_anchor_element() {
+                        let element = ElementCast::to_ref(target.r()).unwrap();
+                        let status = element.get_attribute(&ns!(""), &atom!("href"))
+                            .and_then(|href| {
+                                let value = href.r().Value();
+                                let url = document.r().url();
+                                UrlParser::new().base_url(&url).parse(&value).map(|url| url.serialize()).ok()
+                            });
+                        let event = ConstellationMsg::NodeStatus(status);
+                        let ConstellationChan(ref chan) = self.constellation_chan;
+                        chan.send(event).unwrap();
+                        break;
+                    }
+                }
+
                 std_mem::swap(&mut *self.mouse_over_targets.borrow_mut(), &mut *mouse_over_targets);
             }
 

@@ -26,6 +26,8 @@ extern crate fnv;
 extern crate euclid;
 extern crate ipc_channel;
 extern crate layers;
+#[macro_use]
+extern crate lazy_static;
 extern crate libc;
 #[macro_use]
 extern crate profile_traits;

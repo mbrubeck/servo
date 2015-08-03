@@ -247,6 +247,8 @@ pub enum Msg {
     Focus(PipelineId),
     /// Requests that the constellation retrieve the current contents of the clipboard
     GetClipboardContents(IpcSender<String>),
+    /// Requests that the constellation set the contents of the clipboard
+    SetClipboardContents(String),
     /// Dispatch a webdriver command
     WebDriverCommand(WebDriverCommandMsg),
     /// Notifies the constellation that the viewport has been constrained in some manner
@@ -266,7 +268,9 @@ pub enum Msg {
     /// WebGL uses the GPU and we don't want to give untrusted content access to the GPU.)
     CreateWebGLPaintTask(Size2D<i32>,
                          GLContextAttributes,
-                         IpcSender<(IpcSender<CanvasMsg>, usize)>),
+                         IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>),
+    /// Status message to be displayed in the chrome, eg. a link URL on mouseover.
+    NodeStatus(Option<String>),
 }
 
 #[derive(Clone, Eq, PartialEq, Deserialize, Serialize)]

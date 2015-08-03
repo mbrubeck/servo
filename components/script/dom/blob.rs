@@ -9,15 +9,13 @@ use dom::bindings::utils::{Reflector, reflect_dom_object};
 use dom::bindings::error::Fallible;
 use dom::bindings::codegen::Bindings::BlobBinding;
 use dom::bindings::codegen::Bindings::BlobBinding::BlobMethods;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
-
+use std::sync::mpsc::Sender;
 use util::str::DOMString;
-
 use num::ToPrimitive;
 use std::ascii::AsciiExt;
 use std::borrow::ToOwned;
 use std::cmp::{min, max};
+use std::cell::{Cell};
 
 #[derive(JSTraceable)]
 pub enum BlobTypeId {
@@ -32,8 +30,8 @@ pub struct Blob {
     type_: BlobTypeId,
     bytes: Option<Vec<u8>>,
     typeString: DOMString,
-    global: GlobalField
-    // isClosed_: bool
+    global: GlobalField,
+    isClosed_: Cell<bool>
 }
 
 fn is_ascii_printable(string: &DOMString) -> bool{
@@ -50,8 +48,8 @@ impl Blob {
             type_: type_,
             bytes: bytes,
             typeString: typeString.to_owned(),
-            global: GlobalField::from_rooted(&global)
-            //isClosed_: false
+            global: GlobalField::from_rooted(&global),
+            isClosed_: Cell::new(false)
         }
     }
 
@@ -82,18 +80,12 @@ impl Blob {
 }
 
 pub trait BlobHelpers {
-    fn read_out_buffer(self) -> Receiver<Vec<u8>>;
-    fn read_out_type(self) -> DOMString;
+    fn read_out_buffer(self, send: Sender<Vec<u8>>);
 }
 
 impl<'a> BlobHelpers for &'a Blob {
-    fn read_out_buffer(self) -> Receiver<Vec<u8>> {
-        let (send, recv) = mpsc::channel();
+    fn read_out_buffer(self, send: Sender<Vec<u8>>) {
         send.send(self.bytes.clone().unwrap_or(vec![])).unwrap();
-        recv
-    }
-    fn read_out_type(self) -> DOMString {
-        self.typeString.clone()
     }
 }
 
@@ -159,15 +151,24 @@ impl<'a> BlobMethods for &'a Blob {
         }
     }
 
-    // http://dev.w3.org/2006/webapi/FileAPI/#dfn-isClosed
-    //fn IsClosed(self) -> bool {
-    //    self.isClosed_.clone()
-    //}
+    // https://dev.w3.org/2006/webapi/FileAPI/#dfn-isClosed
+    fn IsClosed(self) -> bool {
+        self.isClosed_.get()
+    }
 
-    // http://dev.w3.org/2006/webapi/FileAPI/#dfn-close
-    //fn Close(self) {
-    //    TODO
-    //}
+    // https://dev.w3.org/2006/webapi/FileAPI/#dfn-close
+    fn Close(self) {
+        // Step 1
+        if self.isClosed_.get() {
+            return;
+        }
+
+        // Step 2
+        self.isClosed_.set(true);
+
+        // TODO Step 3 if Blob URL Store is implemented
+
+    }
 }
 
 impl FileDerived for Blob {

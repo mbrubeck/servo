@@ -370,8 +370,9 @@ impl<'a> PrivateNodeHelpers for &'a Node {
         for node in child.traverse_preorder() {
             node.set_flag(IS_IN_DOC, false);
             vtable_for(&&*node).unbind_from_tree(parent_in_doc);
+            node.layout_data.dispose(&node);
         }
-        child.layout_data.dispose(child);
+
         let document = child.owner_doc();
         document.content_and_heritage_changed(child, NodeDamage::OtherNodeDamage);
     }
@@ -801,40 +802,54 @@ impl<'a> NodeHelpers for &'a Node {
 
     // https://dom.spec.whatwg.org/#dom-childnode-before
     fn before(self, nodes: Vec<NodeOrString>) -> ErrorResult {
-        match self.parent_node.get() {
-            None => {
-                // Step 1.
-                Ok(())
-            },
-            Some(ref parent_node) => {
-                // Step 2.
-                let doc = self.owner_doc();
-                let node = try!(doc.r().node_from_nodes_and_strings(nodes));
-                // Step 3.
-                Node::pre_insert(node.r(), parent_node.root().r(),
-                                 Some(self)).map(|_| ())
-            },
-        }
+        // Step 1.
+        let parent = &self.parent_node;
+
+        // Step 2.
+        let parent = match parent.get() {
+            None => return Ok(()),
+            Some(ref parent) => parent.root(),
+        };
+
+        // Step 3.
+        let viable_previous_sibling = first_node_not_in(self.preceding_siblings(), &nodes);
+
+        // Step 4.
+        let node = try!(self.owner_doc().node_from_nodes_and_strings(nodes));
+
+        // Step 5.
+        let viable_previous_sibling = match viable_previous_sibling {
+            Some(ref viable_previous_sibling) => viable_previous_sibling.next_sibling.get(),
+            None => parent.first_child.get(),
+        }.map(|s| s.root());
+
+        // Step 6.
+        try!(Node::pre_insert(&node, &parent, viable_previous_sibling.r()));
+
+        Ok(())
     }
 
     // https://dom.spec.whatwg.org/#dom-childnode-after
     fn after(self, nodes: Vec<NodeOrString>) -> ErrorResult {
-        match self.parent_node.get() {
-            None => {
-                // Step 1.
-                Ok(())
-            },
-            Some(ref parent_node) => {
-                // Step 2.
-                let doc = self.owner_doc();
-                let node = try!(doc.r().node_from_nodes_and_strings(nodes));
-                // Step 3.
-                // FIXME(https://github.com/servo/servo/issues/5720)
-                let next_sibling = self.next_sibling.get().map(Root::from_rooted);
-                Node::pre_insert(node.r(), parent_node.root().r(),
-                                 next_sibling.r()).map(|_| ())
-            },
-        }
+        // Step 1.
+        let parent = &self.parent_node;
+
+        // Step 2.
+        let parent = match parent.get() {
+            None => return Ok(()),
+            Some(ref parent) => parent.root(),
+        };
+
+        // Step 3.
+        let viable_next_sibling = first_node_not_in(self.following_siblings(), &nodes);
+
+        // Step 4.
+        let node = try!(self.owner_doc().node_from_nodes_and_strings(nodes));
+
+        // Step 5.
+        try!(Node::pre_insert(&node, &parent, viable_next_sibling.r()));
+
+        Ok(())
     }
 
     // https://dom.spec.whatwg.org/#dom-childnode-replacewith
@@ -1025,6 +1040,21 @@ impl<'a> NodeHelpers for &'a Node {
         }
         Ok(fragment)
     }
+}
+
+
+/// Iterate through `nodes` until we find a `Node` that is not in `not_in`
+fn first_node_not_in<I>(mut nodes: I, not_in: &[NodeOrString]) -> Option<Root<Node>>
+        where I: Iterator<Item=Root<Node>>
+{
+    nodes.find(|node| {
+        not_in.iter().all(|n| {
+            match n {
+                &NodeOrString::eNode(ref n) => n != node,
+                _ => true,
+            }
+        })
+    })
 }
 
 /// If the given untrusted node address represents a valid DOM node in the given runtime,
@@ -2152,74 +2182,68 @@ impl<'a> NodeMethods for &'a Node {
             NodeTypeId::CharacterData(CharacterDataTypeId::Text) if self.is_document() =>
                 return Err(HierarchyRequest),
             NodeTypeId::DocumentType if !self.is_document() => return Err(HierarchyRequest),
-            NodeTypeId::DocumentFragment |
-            NodeTypeId::DocumentType |
-            NodeTypeId::Element(..) |
-            NodeTypeId::CharacterData(..) => (),
-            NodeTypeId::Document => return Err(HierarchyRequest)
+            NodeTypeId::Document => return Err(HierarchyRequest),
+            _ => ()
         }
 
         // Step 6.
-        match self.type_id {
-            NodeTypeId::Document => {
-                match node.type_id() {
-                    // Step 6.1
-                    NodeTypeId::DocumentFragment => {
-                        // Step 6.1.1(b)
-                        if node.children()
-                               .any(|c| c.r().is_text())
-                        {
-                            return Err(HierarchyRequest);
-                        }
-                        match node.child_elements().count() {
-                            0 => (),
-                            // Step 6.1.2
-                            1 => {
-                                if self.child_elements()
-                                       .any(|c| NodeCast::from_ref(c.r()) != child) {
-                                    return Err(HierarchyRequest);
-                                }
-                                if child.following_siblings()
-                                        .any(|child| child.r().is_doctype()) {
-                                    return Err(HierarchyRequest);
-                                }
-                            },
-                            // Step 6.1.1(a)
-                            _ => return Err(HierarchyRequest)
-                        }
-                    },
-                    // Step 6.2
-                    NodeTypeId::Element(..) => {
-                        if self.child_elements()
-                               .any(|c| NodeCast::from_ref(c.r()) != child) {
-                            return Err(HierarchyRequest);
-                        }
-                        if child.following_siblings()
-                                .any(|child| child.r().is_doctype())
-                        {
-                            return Err(HierarchyRequest);
-                        }
-                    },
-                    // Step 6.3
-                    NodeTypeId::DocumentType => {
-                        if self.children()
-                               .any(|c| c.r().is_doctype() &&
-                                    c.r() != child)
-                        {
-                            return Err(HierarchyRequest);
-                        }
-                        if self.children()
-                               .take_while(|c| c.r() != child)
-                               .any(|c| c.r().is_element())
-                        {
-                            return Err(HierarchyRequest);
-                        }
-                    },
-                    NodeTypeId::CharacterData(..) => (),
-                    NodeTypeId::Document => unreachable!()
-                }
-            },
-            _ => ()
+        if self.is_document() {
+            match node.type_id() {
+                // Step 6.1
+                NodeTypeId::DocumentFragment => {
+                    // Step 6.1.1(b)
+                    if node.children()
+                           .any(|c| c.is_text())
+                    {
+                        return Err(HierarchyRequest);
+                    }
+                    match node.child_elements().count() {
+                        0 => (),
+                        // Step 6.1.2
+                        1 => {
+                            if self.child_elements()
+                                   .any(|c| NodeCast::from_ref(c.r()) != child) {
+                                return Err(HierarchyRequest);
+                            }
+                            if child.following_siblings()
+                                    .any(|child| child.is_doctype()) {
+                                return Err(HierarchyRequest);
+                            }
+                        },
+                        // Step 6.1.1(a)
+                        _ => return Err(HierarchyRequest)
+                    }
+                },
+                // Step 6.2
+                NodeTypeId::Element(..) => {
+                    if self.child_elements()
+                           .any(|c| NodeCast::from_ref(c.r()) != child) {
+                        return Err(HierarchyRequest);
+                    }
+                    if child.following_siblings()
+                            .any(|child| child.is_doctype())
+                    {
+                        return Err(HierarchyRequest);
+                    }
+                },
+                // Step 6.3
+                NodeTypeId::DocumentType => {
+                    if self.children()
+                           .any(|c| c.is_doctype() &&
+                                c.r() != child)
+                    {
+                        return Err(HierarchyRequest);
+                    }
+                    if self.children()
+                           .take_while(|c| c.r() != child)
+                           .any(|c| c.is_element())
+                    {
+                        return Err(HierarchyRequest);
+                    }
+                },
+                NodeTypeId::CharacterData(..) => (),
+                NodeTypeId::Document => unreachable!()
+            }
         }
 
         // Ok if not caught by previous error checks.
@@ -2228,8 +2252,8 @@ impl<'a> NodeMethods for &'a Node {
         }
 
         // Step 7-8.
-        let child_next_sibling = child.next_sibling.get().map(Root::from_rooted);
-        let node_next_sibling = node.next_sibling.get().map(Root::from_rooted);
+        let child_next_sibling = child.GetNextSibling();
+        let node_next_sibling = node.GetNextSibling();
         let reference_child = if child_next_sibling.r() == Some(node) {
             node_next_sibling.r()
         } else {

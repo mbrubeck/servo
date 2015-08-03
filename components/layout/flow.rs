@@ -25,7 +25,6 @@
 ///   line breaks and mapping to CSS boxes, for the purpose of handling `getClientRects()` and
 ///   similar methods.
 
-use css::node_style::StyledNode;
 use block::BlockFlow;
 use context::LayoutContext;
 use display_list_builder::DisplayListBuildingResult;
@@ -296,7 +295,10 @@ pub trait Flow: fmt::Debug + Sync {
     }
 
     /// Marks this flow as the root flow. The default implementation is a no-op.
-    fn mark_as_root(&mut self) {}
+    fn mark_as_root(&mut self) {
+        debug!("called mark_as_root() on a flow of type {:?}", self.class());
+        panic!("called mark_as_root() on an unhandled flow");
+    }
 
     // Note that the following functions are mostly called using static method
     // dispatch, so it's ok to have them in this trait. Plus, they have

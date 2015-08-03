@@ -233,7 +233,7 @@ pub fn do_create_interface_objects(cx: *mut JSContext,
         let constructor = RootedObject::new(cx, create_constructor(cx, cnative, cnargs, cs.as_ptr()));
         assert!(!constructor.ptr.is_null());
         unsafe {
-            assert!(JS_DefineProperty1(cx, constructor.handle(), "prototype".as_ptr() as *const libc::c_char,
+            assert!(JS_DefineProperty1(cx, constructor.handle(), b"prototype\0".as_ptr() as *const libc::c_char,
                                        rval.handle(),
                                        JSPROP_PERMANENT | JSPROP_READONLY,
                                        None, None) != 0);
@@ -381,8 +381,8 @@ pub type ProtoOrIfaceArray = [*mut JSObject; PrototypeList::ID::Count as usize];
 /// Construct and cache the ProtoOrIfaceArray for the given global.
 /// Fails if the argument is not a DOM global.
 pub fn initialize_global(global: *mut JSObject) {
-    let proto_array: Box<ProtoOrIfaceArray> = box ()
-        ([0 as *mut JSObject; PrototypeList::ID::Count as usize]);
+    let proto_array: Box<ProtoOrIfaceArray> =
+        box [0 as *mut JSObject; PrototypeList::ID::Count as usize];
     unsafe {
         assert!(((*JS_GetClass(global)).flags & JSCLASS_DOM_GLOBAL) != 0);
         let box_ = Box::into_raw(proto_array);
