@@ -20,7 +20,7 @@ use harfbuzz::{RUST_hb_buffer_add_utf8};
 use harfbuzz::{RUST_hb_buffer_destroy};
 use harfbuzz::{RUST_hb_buffer_get_glyph_positions};
 use harfbuzz::{RUST_hb_buffer_get_length};
-use harfbuzz::{RUST_hb_buffer_set_direction};
+use harfbuzz::{RUST_hb_buffer_set_direction, RUST_hb_buffer_set_unicode_funcs};
 use harfbuzz::{RUST_hb_face_destroy};
 use harfbuzz::{hb_face_t, hb_font_t};
 use harfbuzz::{hb_feature_t};
@@ -38,6 +38,7 @@ use harfbuzz::{hb_glyph_info_t};
 use harfbuzz::{hb_glyph_position_t};
 use harfbuzz::{hb_position_t, hb_tag_t};
 use harfbuzz::{RUST_hb_shape, RUST_hb_buffer_get_glyph_infos};
+use harfbuzz::{hb_unicode_funcs_t, RUST_hb_unicode_funcs_create};
 use libc::{c_uint, c_int, c_void, c_char};
 use util::geometry::Au;
 use util::range::Range;
@@ -222,6 +223,7 @@ impl ShaperMethods for Shaper {
             } else {
                 HB_DIRECTION_LTR
             });
+            RUST_hb_buffer_set_unicode_funcs(hb_buffer, **HB_UNICODE_FUNCS);
 
             RUST_hb_buffer_add_utf8(hb_buffer,
                                     text.as_ptr() as *const c_char,
@@ -534,6 +536,12 @@ lazy_static! {
         RUST_hb_font_funcs_set_glyph_h_kerning_func(
             hb_funcs, glyph_h_kerning_func, ptr::null_mut(), ptr::null_mut());
 
+        ptr::Unique::new(hb_funcs)
+    };
+
+    static ref HB_UNICODE_FUNCS: ptr::Unique<hb_unicode_funcs_t> = unsafe {
+        //let hb_funcs = RUST_hb_unicode_funcs_create(ptr::null_mut());
+        let hb_funcs = harfbuzz::RUST_hb_icu_get_unicode_funcs();
         ptr::Unique::new(hb_funcs)
     };
 }
