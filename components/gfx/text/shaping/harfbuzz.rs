@@ -13,6 +13,7 @@ use text::util::{float_to_fixed, fixed_to_float, is_bidi_control};
 
 use euclid::Point2D;
 use harfbuzz::{HB_MEMORY_MODE_READONLY, HB_DIRECTION_LTR, HB_DIRECTION_RTL};
+use harfbuzz::{HB_SCRIPT_ARABIC};
 use harfbuzz::{RUST_hb_blob_create, RUST_hb_face_create_for_tables};
 use harfbuzz::{hb_blob_t};
 use harfbuzz::{hb_bool_t};
@@ -20,7 +21,8 @@ use harfbuzz::{RUST_hb_buffer_add_utf8};
 use harfbuzz::{RUST_hb_buffer_destroy};
 use harfbuzz::{RUST_hb_buffer_get_glyph_positions};
 use harfbuzz::{RUST_hb_buffer_get_length};
-use harfbuzz::{RUST_hb_buffer_set_direction, RUST_hb_buffer_set_unicode_funcs};
+use harfbuzz::{RUST_hb_buffer_set_direction};
+use harfbuzz::{RUST_hb_buffer_set_script, RUST_hb_buffer_set_unicode_funcs};
 use harfbuzz::{RUST_hb_face_destroy};
 use harfbuzz::{hb_face_t, hb_font_t};
 use harfbuzz::{hb_feature_t};
@@ -223,6 +225,7 @@ impl ShaperMethods for Shaper {
             } else {
                 HB_DIRECTION_LTR
             });
+            RUST_hb_buffer_set_script(hb_buffer, HB_SCRIPT_ARABIC);
             RUST_hb_buffer_set_unicode_funcs(hb_buffer, **HB_UNICODE_FUNCS);
 
             RUST_hb_buffer_add_utf8(hb_buffer,
@@ -232,6 +235,7 @@ impl ShaperMethods for Shaper {
                                     text.len() as c_int);
 
             let mut features = Vec::new();
+            /*
             if options.flags.contains(IGNORE_LIGATURES_SHAPING_FLAG) {
                 features.push(hb_feature_t {
                     _tag: LIGA,
@@ -248,6 +252,7 @@ impl ShaperMethods for Shaper {
                     _end: RUST_hb_buffer_get_length(hb_buffer),
                 })
             }
+            */
 
             RUST_hb_shape(self.hb_font, hb_buffer, features.as_mut_ptr(), features.len() as u32);
             self.save_glyph_results(text, options, glyphs, hb_buffer);
