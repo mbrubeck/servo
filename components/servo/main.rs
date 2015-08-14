@@ -147,6 +147,7 @@ fn setup_logging() {
 fn get_args() -> Vec<String> {
     vec![
         "servo".to_owned(),
+        "-e".to_owned(),
         "http://www.servoexperiments.com/demos.html".to_owned()
     ]
 }
