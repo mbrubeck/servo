@@ -77,4 +77,14 @@ impl<'a> TouchMethods for &'a Touch {
     fn ClientY(self) -> Finite<f64> {
         Finite::wrap(self.client_y)
     }
+
+    /// https://w3c.github.io/touch-events/#widl-Touch-clientX
+    fn PageX(self) -> Finite<f64> {
+        Finite::wrap(self.client_x) // XXX
+    }
+
+    /// https://w3c.github.io/touch-events/#widl-Touch-clientY
+    fn PageY(self) -> Finite<f64> {
+        Finite::wrap(self.client_y) // XXX
+    }
 }
