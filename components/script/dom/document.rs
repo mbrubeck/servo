@@ -31,6 +31,7 @@ use dom::bindings::error::Error::HierarchyRequest;
 use dom::bindings::global::GlobalRef;
 use dom::bindings::js::{JS, Root, LayoutJS, MutNullableHeap};
 use dom::bindings::js::RootedReference;
+use dom::bindings::num::Finite;
 use dom::bindings::refcounted::Trusted;
 use dom::bindings::trace::RootedVec;
 use dom::bindings::utils::{reflect_dom_object, Reflectable};
@@ -61,6 +62,9 @@ use dom::node::{self, Node, NodeHelpers, NodeTypeId, CloneChildrenFlag, NodeDama
 use dom::nodelist::NodeList;
 use dom::nodeiterator::NodeIterator;
 use dom::text::Text;
+use dom::touch::Touch;
+use dom::touchlist::TouchList;
+use dom::touchevent::TouchEvent;
 use dom::processinginstruction::ProcessingInstruction;
 use dom::range::Range;
 use dom::servohtmlparser::ServoHTMLParser;
@@ -289,6 +293,12 @@ pub trait DocumentHelpers<'a> {
                                js_runtime: *mut JSRuntime,
                                point: Point2D<f32>,
                                prev_mouse_over_targets: &mut RootedVec<JS<Node>>);
+
+    fn handle_touch_event(self,
+                          js_runtime: *mut JSRuntime,
+                          identifier: i32,
+                          point: Point2D<f32>,
+                          event_name: String) -> bool;
 
     fn set_current_script(self, script: Option<&HTMLScriptElement>);
     fn trigger_mozbrowser_event(self, event: MozBrowserEvent);
@@ -806,6 +816,48 @@ impl<'a> DocumentHelpers<'a> for &'a Document {
         window.r().reflow(ReflowGoal::ForDisplay,
                           ReflowQueryType::NoQuery,
                           ReflowReason::MouseEvent);
+    }
+
+    fn handle_touch_event(self,
+                          js_runtime: *mut JSRuntime,
+                          identifier: i32,
+                          point: Point2D<f32>,
+                          event_name: String) -> bool {
+        let node = match self.hit_test(&point) {
+            Some(node_address) => node::from_untrusted_node_address(js_runtime, node_address),
+            None => return false
+        };
+        let el = match ElementCast::to_ref(node.r()) {
+            Some(el) => Root::from_ref(el),
+            None => {
+                let parent = node.r().GetParentNode();
+                match parent.and_then(ElementCast::to_root) {
+                    Some(parent) => parent,
+                    None => return false,
+                }
+            },
+        };
+        let target = EventTargetCast::from_ref(el.r());
+
+        let x = Finite::wrap(point.x as f64);
+        let y = Finite::wrap(point.y as f64);
+
+        let window = self.window.root();
+
+        let touch = Touch::new(window.r(), identifier, target, x, y, x, y);
+        let touches = TouchList::new(window.r(), vec![JS::from_rooted(&touch)]);
+
+        let touch_event = TouchEvent::new(window.r(),
+                                          event_name,
+                                          EventBubbles::Bubbles,
+                                          EventCancelable::Cancelable,
+                                          Some(window.r()),
+                                          0i32,
+                                          &touches, &touches, &touches,
+                                          // FIXME: modifier keys
+                                          false, false, false, false);
+        let event = EventCast::from_ref(touch_event.r());
+        event.fire(target)
     }
 
     /// The entry point for all key processing for web content

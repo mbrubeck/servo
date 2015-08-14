@@ -123,7 +123,14 @@ pub enum ScriptToCompositorMsg {
     ScrollFragmentPoint(PipelineId, LayerId, Point2D<f32>),
     SetTitle(PipelineId, Option<String>),
     SendKeyEvent(Key, KeyState, KeyModifiers),
+    TouchEventProcessed(EventResult),
     Exit,
+}
+
+#[derive(Deserialize, Serialize)]
+pub enum EventResult {
+    DefaultAllowed,
+    DefaultPrevented,
 }
 
 /// The interface used by the script task to tell the compositor to update its ready state,
@@ -159,6 +166,10 @@ impl ScriptListener {
 
     pub fn send_key_event(&mut self, key: Key, state: KeyState, modifiers: KeyModifiers) {
         self.0.send(ScriptToCompositorMsg::SendKeyEvent(key, state, modifiers)).unwrap()
+    }
+
+    pub fn touch_event_processed(&mut self, result: EventResult) {
+        self.0.send(ScriptToCompositorMsg::TouchEventProcessed(result)).unwrap();
     }
 }
 
