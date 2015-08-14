@@ -857,7 +857,12 @@ impl<'a> DocumentHelpers<'a> for &'a Document {
                                           // FIXME: modifier keys
                                           false, false, false, false);
         let event = EventCast::from_ref(touch_event.r());
-        event.fire(target)
+        let result = event.fire(target);
+
+        window.r().reflow(ReflowGoal::ForDisplay,
+                          ReflowQueryType::NoQuery,
+                          ReflowReason::MouseEvent);
+        result
     }
 
     /// The entry point for all key processing for web content
