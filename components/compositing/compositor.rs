@@ -52,7 +52,8 @@ use url::Url;
 use util::geometry::{PagePx, ScreenPx, ViewportPx};
 use util::opts;
 use util::print_tree::PrintTree;
-use windowing::{self, MouseWindowEvent, WindowEvent, WindowMethods, WindowNavigateMsg};
+use windowing::{self, MouseWindowEvent, TouchEventType, WindowEvent};
+use windowing::{WindowMethods, WindowNavigateMsg};
 
 const BUFFER_MAP_SIZE: usize = 10000000;
 
@@ -1055,6 +1056,14 @@ impl<Window: WindowMethods> IOCompositor<Window> {
 
             WindowEvent::MouseWindowMoveEventClass(cursor) => {
                 self.on_mouse_window_move_event_class(cursor);
+            }
+
+            WindowEvent::Touch(event_type, identifier, location) => {
+                match event_type {
+                    TouchEventType::Down => self.on_touch_down(identifier, location),
+                    TouchEventType::Move => self.on_touch_move(identifier, location),
+                    TouchEventType::Up => self.on_touch_up(identifier, location),
+                }
             }
 
             WindowEvent::Scroll(delta, cursor) => {

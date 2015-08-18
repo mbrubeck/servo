@@ -7,7 +7,7 @@
 use NestedEventLoopListener;
 use compositing::compositor_task::{self, CompositorProxy, CompositorReceiver};
 #[cfg(feature = "window")]
-use compositing::windowing::{MouseWindowEvent, WindowNavigateMsg};
+use compositing::windowing::{MouseWindowEvent, TouchEventType, WindowNavigateMsg};
 use compositing::windowing::{WindowEvent, WindowMethods};
 use euclid::scale_factor::ScaleFactor;
 use euclid::size::TypedSize2D;
@@ -16,6 +16,7 @@ use gleam::gl;
 use glutin;
 #[cfg(feature = "window")]
 use glutin::{Api, ElementState, Event, GlRequest, MouseButton, VirtualKeyCode, MouseScrollDelta};
+use glutin::{TouchPhase};
 use layers::geometry::DevicePixel;
 use layers::platform::surface::NativeDisplay;
 #[cfg(feature = "window")]
@@ -210,6 +211,17 @@ impl Window {
                     MouseScrollDelta::PixelDelta(dx, dy) => self.scroll_window(dx, dy)
                 }
             },
+            Event::Touch(touch) => {
+                let phase = match touch.phase {
+                    TouchPhase::Started => TouchEventType::Down,
+                    TouchPhase::Moved => TouchEventType::Move,
+                    TouchPhase::Ended => TouchEventType::Up,
+                    TouchPhase::Cancelled => TouchEventType::Up, // FIXME: Add "touchcancel" events
+                };
+                let id = touch.id as i32;
+                let point = Point2D::typed(touch.location.0 as f32, touch.location.1 as f32);
+                self.event_queue.borrow_mut().push(WindowEvent::Touch(phase, id, point));
+            }
             Event::Refresh => {
                 self.event_queue.borrow_mut().push(WindowEvent::Refresh);
             }

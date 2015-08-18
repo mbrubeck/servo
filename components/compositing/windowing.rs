@@ -28,6 +28,14 @@ pub enum MouseWindowEvent {
 }
 
 #[derive(Clone)]
+pub enum TouchEventType {
+    Down,
+    Move,
+    Up,
+}
+
+
+#[derive(Clone)]
 pub enum WindowNavigateMsg {
     Forward,
     Back,
@@ -59,6 +67,8 @@ pub enum WindowEvent {
     MouseWindowEventClass(MouseWindowEvent),
     /// Sent when a mouse move.
     MouseWindowMoveEventClass(TypedPoint2D<DevicePixel, f32>),
+    /// Touch event: type, identifier, point
+    Touch(TouchEventType, i32, TypedPoint2D<DevicePixel, f32>),
     /// Sent when the user scrolls. The first point is the delta and the second point is the
     /// origin.
     Scroll(TypedPoint2D<DevicePixel, f32>, TypedPoint2D<DevicePixel, i32>),
@@ -88,6 +98,7 @@ impl Debug for WindowEvent {
             WindowEvent::LoadUrl(..) => write!(f, "LoadUrl"),
             WindowEvent::MouseWindowEventClass(..) => write!(f, "Mouse"),
             WindowEvent::MouseWindowMoveEventClass(..) => write!(f, "MouseMove"),
+            WindowEvent::Touch(..) => write!(f, "Touch"),
             WindowEvent::Scroll(..) => write!(f, "Scroll"),
             WindowEvent::Zoom(..) => write!(f, "Zoom"),
             WindowEvent::PinchZoom(..) => write!(f, "PinchZoom"),
