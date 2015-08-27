@@ -220,12 +220,6 @@ impl ShaperMethods for Shaper {
     fn shape_text(&self, text: &str, options: &ShapingOptions, glyphs: &mut GlyphStore) {
         unsafe {
             let hb_buffer: *mut hb_buffer_t = RUST_hb_buffer_create();
-            RUST_hb_buffer_set_direction(hb_buffer, if options.flags.contains(RTL_FLAG) {
-                HB_DIRECTION_RTL
-            } else {
-                HB_DIRECTION_LTR
-            });
-            RUST_hb_buffer_set_script(hb_buffer, HB_SCRIPT_ARABIC);
             RUST_hb_buffer_set_unicode_funcs(hb_buffer, **HB_UNICODE_FUNCS);
 
             RUST_hb_buffer_add_utf8(hb_buffer,
@@ -233,9 +227,15 @@ impl ShaperMethods for Shaper {
                                     text.len() as c_int,
                                     0,
                                     text.len() as c_int);
+            //harfbuzz::RUST_hb_buffer_guess_properties(hb_buffer);
+            RUST_hb_buffer_set_direction(hb_buffer, if options.flags.contains(RTL_FLAG) {
+                HB_DIRECTION_RTL
+            } else {
+                HB_DIRECTION_LTR
+            });
+            RUST_hb_buffer_set_script(hb_buffer, HB_SCRIPT_ARABIC);
 
             let mut features = Vec::new();
-            /*
             if options.flags.contains(IGNORE_LIGATURES_SHAPING_FLAG) {
                 features.push(hb_feature_t {
                     _tag: LIGA,
@@ -252,7 +252,6 @@ impl ShaperMethods for Shaper {
                     _end: RUST_hb_buffer_get_length(hb_buffer),
                 })
             }
-            */
 
             RUST_hb_shape(self.hb_font, hb_buffer, features.as_mut_ptr(), features.len() as u32);
             self.save_glyph_results(text, options, glyphs, hb_buffer);
@@ -302,7 +301,7 @@ impl Shaper {
             }
         }
 
-        debug!("(glyph idx) -> (text byte offset)");
+        debug!("(glyph idx) -> (text byte offset (codepoint))");
         for i in 0..glyph_data.len() {
             // loc refers to a *byte* offset within the utf8 string.
             let loc = glyph_data.byte_offset_of_glyph(i) as usize;
@@ -314,7 +313,9 @@ impl Shaper {
                        loc,
                        i);
             }
-            debug!("{} -> {}", i, loc);
+            let mut y_pos = Au(0);
+            let entry = glyph_data.get_entry_for_glyph(i, &mut y_pos);
+            debug!("{} -> {} ({:#X})", i, loc, entry.codepoint);
         }
 
         debug!("text: {:?}", text);
