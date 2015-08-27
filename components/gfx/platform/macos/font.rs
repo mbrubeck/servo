@@ -124,6 +124,10 @@ impl FontHandleMethods for FontHandle {
         }
     }
 
+    fn glyph_variant_index(&self, codepoint: char, _variation: char) -> Option<GlyphId> {
+        self.glyph_index(codepoint)
+    }
+
     fn glyph_index(&self, codepoint: char) -> Option<GlyphId> {
         let characters: [UniChar; 1] = [codepoint as UniChar];
         let mut glyphs: [CGGlyph; 1] = [0 as CGGlyph];

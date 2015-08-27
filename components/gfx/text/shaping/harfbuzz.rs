@@ -253,6 +253,7 @@ impl ShaperMethods for Shaper {
                 })
             }
 
+            debug!("Entering hb_shape");
             RUST_hb_shape(self.hb_font, hb_buffer, features.as_mut_ptr(), features.len() as u32);
             self.save_glyph_results(text, options, glyphs, hb_buffer);
             RUST_hb_buffer_destroy(hb_buffer);
@@ -555,16 +556,20 @@ lazy_static! {
 extern fn glyph_func(_: *mut hb_font_t,
                      font_data: *mut c_void,
                      unicode: hb_codepoint_t,
-                     _: hb_codepoint_t,
+                     variation: hb_codepoint_t,
                      glyph: *mut hb_codepoint_t,
                      _: *mut c_void)
                   -> hb_bool_t {
     let font: *const Font = font_data as *const Font;
     assert!(!font.is_null());
 
+    debug!("glyph_func {:#X} {:#X}", unicode, variation);
+
     unsafe {
-        match (*font).glyph_index(char::from_u32(unicode).unwrap()) {
+        match (*font).glyph_variant_index(char::from_u32(unicode).unwrap(),
+                                          char::from_u32(variation).unwrap()) {
             Some(g) => {
+                debug!(" found glyph {:#X}", g);
                 *glyph = g as hb_codepoint_t;
                 true as hb_bool_t
             }

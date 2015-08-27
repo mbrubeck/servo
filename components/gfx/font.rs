@@ -39,6 +39,7 @@ pub trait FontHandleMethods {
     fn stretchiness(&self) -> font_stretch::T;
 
     fn glyph_index(&self, codepoint: char) -> Option<GlyphId>;
+    fn glyph_variant_index(&self, codepoint: char, variant: char) -> Option<GlyphId>;
     fn glyph_h_advance(&self, GlyphId) -> Option<FractionalPixel>;
     fn glyph_h_kerning(&self, GlyphId, GlyphId) -> FractionalPixel;
     fn metrics(&self) -> FontMetrics;
@@ -183,11 +184,16 @@ impl Font {
 
     #[inline]
     pub fn glyph_index(&self, codepoint: char) -> Option<GlyphId> {
+        self.glyph_variant_index(codepoint, '\0')
+    }
+
+    #[inline]
+    pub fn glyph_variant_index(&self, codepoint: char, variation: char) -> Option<GlyphId> {
         let codepoint = match self.variant {
             font_variant::T::small_caps => codepoint.to_uppercase().next().unwrap(), //FIXME: #5938
             font_variant::T::normal => codepoint,
         };
-        self.handle.glyph_index(codepoint)
+        self.handle.glyph_variant_index(codepoint, variation)
     }
 
     pub fn glyph_h_kerning(&mut self, first_glyph: GlyphId, second_glyph: GlyphId)

@@ -14,6 +14,7 @@ use text::util::{float_to_fixed, fixed_to_float};
 use style::computed_values::{font_stretch, font_weight};
 use platform::font_template::FontTemplateData;
 
+use freetype::freetype::{FT_Face_GetCharVariantIndex};
 use freetype::freetype::{FT_Get_Char_Index, FT_Get_Postscript_Name};
 use freetype::freetype::{FT_Load_Glyph, FT_Set_Char_Size};
 use freetype::freetype::{FT_Get_Kerning, FT_Get_Sfnt_Table};
@@ -163,15 +164,23 @@ impl FontHandleMethods for FontHandle {
     }
 
     fn glyph_index(&self, codepoint: char) -> Option<GlyphId> {
+        self.glyph_variant_index(codepoint, '\0')
+    }
+
+    fn glyph_variant_index(&self, codepoint: char, variation: char) -> Option<GlyphId> {
         assert!(!self.face.is_null());
-        unsafe {
-            let idx = FT_Get_Char_Index(self.face, codepoint as FT_ULong);
-            return if idx != 0 as FT_UInt {
-                Some(idx as GlyphId)
-            } else {
-                debug!("Invalid codepoint: {}", codepoint);
-                None
-            };
+        let idx = unsafe {
+            match variation as FT_ULong {
+                0 => FT_Get_Char_Index(self.face, codepoint as FT_ULong),
+                v => FT_Face_GetCharVariantIndex(self.face, codepoint as FT_ULong, v)
+            }
+        };
+
+        if idx != 0 {
+            Some(idx)
+        } else {
+            debug!("Invalid codepoint: {}", codepoint);
+            None
         }
     }
 
