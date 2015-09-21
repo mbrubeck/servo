@@ -155,9 +155,13 @@ pub fn compute_damage(old: &Option<Arc<ComputedValues>>, new: &ComputedValues) -
 
     add_if_not_equal!(old, new, damage,
                       [ REPAINT ], [
-        get_color.color, get_background.background_color,
+        get_background.background_color, get_background.background_image,
+        get_background.background_position, get_background.background_repeat,
+        get_background.background_attachment, get_background.background_clip,
+        get_background.background_origin, get_background.background_size,
         get_border.border_top_color, get_border.border_right_color,
-        get_border.border_bottom_color, get_border.border_left_color
+        get_border.border_bottom_color, get_border.border_left_color,
+        get_color.color
     ]);
 
     add_if_not_equal!(old, new, damage,
@@ -170,19 +174,25 @@ pub fn compute_damage(old: &Option<Arc<ComputedValues>>, new: &ComputedValues) -
                       [ REPAINT, BUBBLE_ISIZES, REFLOW_OUT_OF_FLOW, REFLOW ], [
         get_border.border_top_width, get_border.border_right_width,
         get_border.border_bottom_width, get_border.border_left_width,
+        get_border.border_top_left_radius, get_border.border_top_right_radius,
+        get_border.border_bottom_left_radius, get_border.border_bottom_right_radius,
+        get_column.column_width, get_column.column_count, get_column.column_gap,
         get_margin.margin_top, get_margin.margin_right,
         get_margin.margin_bottom, get_margin.margin_left,
         get_padding.padding_top, get_padding.padding_right,
         get_padding.padding_bottom, get_padding.padding_left,
-        get_box.width, get_box.height,
+        get_box.max_width, get_box.max_height, get_box.min_width, get_box.min_height,
+        get_box.width, get_box.height, get_box.vertical_align,
+        get_box.overflow_x, get_box.overflow_y, get_box.z_index, get_box.box_sizing
         get_inheritedtext.text_align, get_text.text_decoration, get_inheritedbox.line_height
     ]);
 
     add_if_not_equal!(old, new, damage,
                       [ REPAINT, BUBBLE_ISIZES, REFLOW_OUT_OF_FLOW, REFLOW, RECONSTRUCT_FLOW ], [
-        get_box.float, get_box.display, get_box.position, get_box.content,
+        get_box.float, get_box.display, get_box.position, get_box.content, get_box.clear,
         get_counters.counter_reset, get_counters.counter_increment,
-        get_list.quotes, get_list.list_style_type,
+        get_list.quotes, get_list.list_style_type, get_list.list_style_position,
+        get_list.list_style_image,
 
         // If these text or font properties change, we need to reconstruct the flow so that
         // text shaping is re-run.
