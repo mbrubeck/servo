@@ -729,10 +729,10 @@ impl Document {
 
         let window = self.window.root();
 
-        let touch = Touch::new(window.r(), identifier, target, x, y, x, y);
+        let touch = self.CreateTouch(window.r(), target, identifier, x, y, x, y);
         let mut touches = RootedVec::new();
         touches.push(JS::from_rooted(&touch));
-        let touches = TouchList::new(window.r(), touches.r());
+        let touches = self.CreateTouchList(*touches);
 
         let event = TouchEvent::new(window.r(),
                                     event_name,
@@ -1412,6 +1412,22 @@ impl DocumentMethods for Document {
     fn CreateNodeIterator(&self, root: &Node, whatToShow: u32, filter: Option<Rc<NodeFilter>>)
                         -> Root<NodeIterator> {
         NodeIterator::new(self, root, whatToShow, filter)
+    }
+
+    fn CreateTouch(&self,
+                   window: &Window,
+                   target: &EventTarget,
+                   identifier: i32,
+                   pageX: Finite<f64>,
+                   pageY: Finite<f64>,
+                   screenX: Finite<f64>,
+                   screenY: Finite<f64>)
+                   -> Root<Touch> {
+        Touch::new(window, identifier, target, pageX, pageY, screenX, screenY, screenX, screenY)
+    }
+
+    fn CreateTouchList(&self, touches: Vec<&Touch>) -> Root<TouchList> {
+        TouchList::new(&self.window, &touches)
     }
 
     // https://dom.spec.whatwg.org/#dom-document-createtreewalker
