@@ -76,6 +76,7 @@ enum ReadyState {
 ///
 /// TODO: Currently Add support for "flinging" (scrolling inertia), pinch zooming, better
 /// support for multiple touch points.
+#[derive(Debug)]
 enum TouchState {
     /// Not tracking any touch point
     Nothing,
@@ -1157,6 +1158,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn on_touch_down(&mut self, identifier: i32, point: TypedPoint2D<DevicePixel, f32>) {
+        println!("Got touchdown in state {:?}", self.touch_gesture_state);
+        println!("  point {:?}", point);
         match self.touch_gesture_state {
             TouchState::Nothing => {
                 // TODO: Don't wait for script if we know the page has no touch event listeners.
@@ -1171,12 +1174,16 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             TouchState::Touching => {}
             TouchState::Panning => {}
         }
+        println!("  new state {:?}", self.touch_gesture_state);
         if let Some(result) = self.find_topmost_layer_at_point(point / self.scene.scale) {
+            println!("  sending event to layer");
             result.layer.send_event(self, TouchDownEvent(identifier, result.point.to_untyped()));
         }
     }
 
     fn on_touch_move(&mut self, identifier: i32, point: TypedPoint2D<DevicePixel, f32>) {
+        println!("Got touchmove in state {:?}", self.touch_gesture_state);
+        println!("  point {:?}", point);
         match self.touch_gesture_state {
             TouchState::Nothing => warn!("Got unexpected touch move event"),
 
@@ -1217,16 +1224,20 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
         }
+        println!("  new state {:?}", self.touch_gesture_state);
         self.last_touch_point = Some(point);
     }
 
     fn on_touch_up(&mut self, identifier: i32, point: TypedPoint2D<DevicePixel, f32>) {
+        println!("Got touchup in state {:?}", self.touch_gesture_state);
+        println!("  point {:?}", point);
         // TODO: Track the number of active touch points, and don't reset stuff until it is zero.
         self.first_touch_point = None;
         self.last_touch_point = None;
 
         // Send the event to script.
         if let Some(result) = self.find_topmost_layer_at_point(point / self.scene.scale) {
+            println!("  sending result to layer");
             result.layer.send_event(self, TouchUpEvent(identifier, result.point.to_untyped()));
         }
 
