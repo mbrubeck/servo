@@ -127,6 +127,7 @@ impl CompositorEventListener for NullCompositor {
             Msg::PaintTaskExited(..) |
             Msg::MoveTo(..) |
             Msg::ResizeTo(..) |
+            Msg::PageZoom(..) |
             Msg::IsReadyToSaveImageReply(..) => {}
             Msg::NewFavicon(..) => {}
             Msg::HeadParsed => {}

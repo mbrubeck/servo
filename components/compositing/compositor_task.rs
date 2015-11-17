@@ -78,6 +78,10 @@ pub fn run_script_listener_thread(compositor_proxy: Box<CompositorProxy + 'stati
                 compositor_proxy.send(Msg::ResizeTo(size));
             }
 
+            ScriptToCompositorMsg::PageZoom(magnification) => {
+                compositor_proxy.send(Msg::PageZoom(magnification));
+            }
+
             ScriptToCompositorMsg::Exit => {
                 let (chan, port) = channel();
                 compositor_proxy.send(Msg::Exit(chan));
@@ -219,6 +223,8 @@ pub enum Msg {
     MoveTo(Point2D<i32>),
     /// Resize the window to size
     ResizeTo(Size2D<u32>),
+    /// Sets the page zoom level
+    PageZoom(f32),
     /// A pipeline was shut down.
     PipelineExited(PipelineId),
 }
@@ -255,6 +261,7 @@ impl Debug for Msg {
             Msg::GetClientWindow(..) => write!(f, "GetClientWindow"),
             Msg::MoveTo(..) => write!(f, "MoveTo"),
             Msg::ResizeTo(..) => write!(f, "ResizeTo"),
+            Msg::PageZoom(x) => write!(f, "PageZoom({})", x),
             Msg::PipelineExited(..) => write!(f, "PipelineExited"),
         }
     }

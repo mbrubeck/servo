@@ -503,6 +503,11 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.window.set_inner_size(size);
             }
 
+            (Msg::PageZoom(magnification),
+             ShutdownState::NotShuttingDown) => {
+                self.on_zoom_window_event(magnification);
+            }
+
             (Msg::GetClientWindow(send),
              ShutdownState::NotShuttingDown) => {
                 let rect = self.window.client_window();

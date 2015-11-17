@@ -12,6 +12,7 @@ use dom::bindings::error::{Error, ErrorResult, Fallible};
 use dom::bindings::global::GlobalRef;
 use dom::bindings::inheritance::Castable;
 use dom::bindings::js::{Root, LayoutJS};
+use dom::bindings::num::Finite;
 use dom::bindings::reflector::Reflectable;
 use dom::customevent::CustomEvent;
 use dom::document::Document;
@@ -24,6 +25,7 @@ use dom::virtualmethods::VirtualMethods;
 use dom::window::Window;
 use js::jsapi::{JSAutoCompartment, JSAutoRequest, RootedValue, JSContext, MutableHandleValue};
 use js::jsval::{UndefinedValue, NullValue};
+use msg::compositor_msg::ScriptToCompositorMsg;
 use msg::constellation_msg::IFrameSandboxState::{IFrameSandboxed, IFrameUnsandboxed};
 use msg::constellation_msg::Msg as ConstellationMsg;
 use msg::constellation_msg::{ConstellationChan, IframeLoadInfo, MozBrowserEvent};
@@ -377,6 +379,19 @@ impl HTMLIFrameElementMethods for HTMLIFrameElement {
     // https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/stop
     fn Stop(&self) -> Fallible<()> {
         Err(Error::NotSupported)
+    }
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/zoom
+    fn Zoom(&self, magnification: Finite<f32>) -> Fallible<()> {
+        if !self.Mozbrowser() {
+            return Err(Error::NotSupported)
+        }
+        if self.upcast::<Node>().is_in_doc() {
+            let window = window_from_node(self);
+            let window = window.r();
+            window.compositor().send(ScriptToCompositorMsg::PageZoom(*magnification)).unwrap()
+        }
+        Ok(())
     }
 
     // https://html.spec.whatwg.org/multipage/#dom-dim-width

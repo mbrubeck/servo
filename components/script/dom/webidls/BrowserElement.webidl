@@ -131,10 +131,10 @@ interface BrowserElementPrivileged {
   //                         [EnforceRange] unsigned long height,
   //                         optional DOMString mimeType="");
 
-  //[Throws,
-  // Pref="dom.mozBrowserFramesEnabled",
-  // CheckAnyPermissions="browser"]
-  //void zoom(float zoom);
+  [Throws,
+   Pref="dom.mozBrowserFramesEnabled",
+   CheckAnyPermissions="browser"]
+  void zoom(float zoom);
 
   //[Throws,
   // Pref="dom.mozBrowserFramesEnabled",

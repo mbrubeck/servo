@@ -160,6 +160,7 @@ pub enum ScriptToCompositorMsg {
     GetClientWindow(IpcSender<(Size2D<u32>, Point2D<i32>)>),
     MoveTo(Point2D<i32>),
     ResizeTo(Size2D<u32>),
+    PageZoom(f32),
     TouchEventProcessed(EventResult),
     Exit,
 }
