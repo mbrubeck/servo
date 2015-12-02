@@ -1699,6 +1699,7 @@ pub mod computed {
     pub enum LengthOrPercentageOrAuto {
         Length(Au),
         Percentage(CSSFloat),
+        ViewportPercentage(ViewportPercentageLength),
         Auto,
         Calc(CalcLengthOrPercentage),
     }
@@ -1707,6 +1708,7 @@ pub mod computed {
             match *self {
                 LengthOrPercentageOrAuto::Length(length) => write!(f, "{:?}", length),
                 LengthOrPercentageOrAuto::Percentage(percentage) => write!(f, "{}%", percentage * 100.),
+                LengthOrPercentageOrAuto::ViewportPercentage(length) => write!(f, "{:?}", length),
                 LengthOrPercentageOrAuto::Auto => write!(f, "auto"),
                 LengthOrPercentageOrAuto::Calc(calc) => write!(f, "{:?}", calc),
             }
@@ -1719,6 +1721,9 @@ pub mod computed {
         #[inline]
         fn to_computed_value(&self, context: &Context) -> LengthOrPercentageOrAuto {
             match *self {
+                specified::LengthOrPercentageOrAuto::Length(Length::ViewportPercentageLength(value)) => {
+                    LengthOrPercentageOrAuto::ViewportPercentage(value)
+                }
                 specified::LengthOrPercentageOrAuto::Length(value) => {
                     LengthOrPercentageOrAuto::Length(value.to_computed_value(context))
                 }
@@ -1741,6 +1746,7 @@ pub mod computed {
                 LengthOrPercentageOrAuto::Length(length) => length.to_css(dest),
                 LengthOrPercentageOrAuto::Percentage(percentage)
                 => write!(dest, "{}%", percentage * 100.),
+                LengthOrPercentageOrAuto::ViewportPercentage(value) => value.to_css(dest),
                 LengthOrPercentageOrAuto::Auto => dest.write_str("auto"),
                 LengthOrPercentageOrAuto::Calc(calc) => calc.to_css(dest),
             }
