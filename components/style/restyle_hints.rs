@@ -133,11 +133,11 @@ impl<'a, E> Element for ElementWrapper<'a, E>
     fn is_html_element_in_html_document(&self) -> bool {
         self.element.is_html_element_in_html_document()
     }
-    fn get_local_name(&self) -> &Atom {
-        self.element.get_local_name()
+    fn get_local_name(&self) -> Atom {
+        self.element.get_local_name().clone()
     }
-    fn get_namespace(&self) -> &Namespace {
-        self.element.get_namespace()
+    fn get_namespace(&self) -> Namespace {
+        self.element.get_namespace().clone()
     }
     fn get_id(&self) -> Option<Atom> {
         match self.snapshot.attrs {

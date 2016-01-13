@@ -519,13 +519,13 @@ impl<'le> ::selectors::Element for ServoLayoutElement<'le> {
     }
 
     #[inline]
-    fn get_local_name(&self) -> &Atom {
-        self.element.local_name()
+    fn get_local_name(&self) -> Atom {
+        self.element.local_name().clone()
     }
 
     #[inline]
-    fn get_namespace(&self) -> &Namespace {
-        self.element.namespace()
+    fn get_namespace(&self) -> Namespace {
+        self.element.namespace().clone()
     }
 
     fn match_non_ts_pseudo_class(&self, pseudo_class: NonTSPseudoClass) -> bool {

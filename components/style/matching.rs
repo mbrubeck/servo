@@ -252,14 +252,14 @@ impl<C: ComputedValues> StyleSharingCandidate<C> {
             class: element.get_attr(&ns!(), &atom!("class"))
                           .map(|string| string.to_owned()),
             link: element.is_link(),
-            namespace: (*element.get_namespace()).clone(),
+            namespace: element.get_namespace(),
             common_style_affecting_attributes:
                    create_common_style_affecting_attributes_from_element::<N::ConcreteElement>(&element)
         })
     }
 
     pub fn can_share_style_with<E: TElement>(&self, element: &E) -> bool {
-        if *element.get_local_name() != self.local_name {
+        if element.get_local_name() != self.local_name {
             return false
         }
 
@@ -273,7 +273,7 @@ impl<C: ComputedValues> StyleSharingCandidate<C> {
             (&Some(_), Some(_)) | (&None, None) => {}
         }
 
-        if *element.get_namespace() != self.namespace {
+        if element.get_namespace() != self.namespace {
             return false
         }
 
@@ -616,8 +616,8 @@ pub trait MatchMethods : TNode {
     fn insert_into_bloom_filter(&self, bf: &mut BloomFilter) {
         // Only elements are interesting.
         if let Some(element) = self.as_element() {
-            bf.insert(element.get_local_name());
-            bf.insert(element.get_namespace());
+            bf.insert(&element.get_local_name());
+            bf.insert(&element.get_namespace());
             element.get_id().map(|id| bf.insert(&id));
 
             // TODO: case-sensitivity depends on the document type and quirks mode
@@ -630,8 +630,8 @@ pub trait MatchMethods : TNode {
     fn remove_from_bloom_filter(&self, bf: &mut BloomFilter) {
         // Only elements are interesting.
         if let Some(element) = self.as_element() {
-            bf.remove(element.get_local_name());
-            bf.remove(element.get_namespace());
+            bf.remove(&element.get_local_name());
+            bf.remove(&element.get_namespace());
             element.get_id().map(|id| bf.remove(&id));
 
             // TODO: case-sensitivity depends on the document type and quirks mode
