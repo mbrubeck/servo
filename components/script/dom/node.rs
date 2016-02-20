@@ -62,6 +62,7 @@ use std::cmp::max;
 use std::default::Default;
 use std::iter::{self, FilterMap, Peekable};
 use std::mem;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use string_cache::{Atom, Namespace, QualName};
 use style::selector_impl::ServoSelectorImpl;
 use util::str::DOMString;
@@ -104,6 +105,9 @@ pub struct Node {
 
     /// A bitfield of flags for node items.
     flags: Cell<NodeFlags>,
+
+    /// A thread-safe bitfield of flags for node items.
+    atomic_flags: AtomicNodeFlags,
 
     /// The maximum version of any inclusive descendant of this node.
     inclusive_descendants_version: Cell<u64>,
@@ -154,6 +158,30 @@ bitflags! {
 impl NodeFlags {
     pub fn new() -> NodeFlags {
         HAS_CHANGED | IS_DIRTY | HAS_DIRTY_DESCENDANTS
+    }
+}
+
+#[derive(JSTraceable, HeapSizeOf)]
+pub struct AtomicNodeFlags(AtomicUsize);
+
+const AFLAG_HAS_SLOW_SELECTOR: usize = 1;
+
+impl AtomicNodeFlags {
+    fn new() -> Self {
+        AtomicNodeFlags(AtomicUsize::new(0))
+    }
+
+    fn has_slow_selector(&self) -> bool {
+        // TODO: What ordering?
+        self.0.load(Ordering::SeqCst) & AFLAG_HAS_SLOW_SELECTOR != 0
+    }
+
+    fn set_has_slow_selector(&self, val: bool) {
+        if val {
+            self.0.fetch_or(AFLAG_HAS_SLOW_SELECTOR, Ordering::SeqCst);
+        } else {
+            self.0.fetch_and(!AFLAG_HAS_SLOW_SELECTOR, Ordering::SeqCst);
+        }
     }
 }
 
@@ -1257,6 +1285,7 @@ impl Node {
             child_list: Default::default(),
             children_count: Cell::new(0u32),
             flags: Cell::new(flags),
+            atomic_flags: AtomicNodeFlags::new(),
             inclusive_descendants_version: Cell::new(0),
             ranges: WeakRangeVec::new(),
 

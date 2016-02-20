@@ -596,6 +596,12 @@ bitflags! {
         #[doc = "right`)."]
         const IMPACTED_BY_RIGHT_FLOATS = 0b0000_0000_0000_0000_1000,
 
+        // TODO: Separate out HAS_EDGE_CHILD_SELECTOR and HAS_SLOW_SELECTOR_LATER_SIBLINGS cases,
+        // like Gecko does?
+        #[doc = "A child of the node has a selector such that inserting or removing children "]
+        #[doc = "requires restyling the parent (for example, `:nth-child`)."]
+        const HAS_SLOW_SELECTOR = 0b0000_0000_0000_0001_0000,
+
         // text align flags
         #[doc = "Whether this flow must have its own layer. Even if this flag is not set, it might"]
         #[doc = "get its own layer if it's deemed to be likely to overlap flows with their own"]
