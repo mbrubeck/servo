@@ -324,9 +324,9 @@ impl Flow for TableFlow {
                     }
                     first_row = false
                 } else if kid.is_table_rowgroup() {
-                    let mut iterator = flow::mut_base(kid).child_iter().peekable();
-                    while let Some(grandkid) = iterator.next() {
-                        let grandkid_next_sibling = iterator.peek();
+                    let mut grandkids = flow::mut_base(kid).child_iter().peekable();
+                    while let Some(grandkid) = grandkids.next() {
+                        let grandkid_next_sibling = grandkids.peek().or_else(|| iterator.peek());
                         let next_collapsed_borders_in_block_direction = if collapsing_borders {
                             match grandkid_next_sibling {
                                 Some(grandkid_next_sibling) => {
