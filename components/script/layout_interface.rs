@@ -194,14 +194,22 @@ pub struct ScriptReflow {
     /// The current window size.
     pub window_size: WindowSizeData,
     /// The channel that we send a notification to.
-    pub script_join_chan: Sender<()>,
+    pub script_join_chan: Option<Sender<()>>,
     /// The type of query if any to perform during this reflow.
     pub query_type: ReflowQueryType,
 }
 
+impl ScriptReflow {
+    fn join_script(&mut self) {
+        if let Some(chan) = self.script_join_chan.take() {
+            chan.send(()).unwrap();
+        }
+    }
+}
+
 impl Drop for ScriptReflow {
     fn drop(&mut self) {
-        self.script_join_chan.send(()).unwrap();
+        self.join_script();
     }
 }
 

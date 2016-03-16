@@ -999,7 +999,7 @@ impl Window {
             document_stylesheets: document.stylesheets().clone(),
             stylesheets_changed: stylesheets_changed,
             window_size: window_size,
-            script_join_chan: join_chan,
+            script_join_chan: Some(join_chan),
             query_type: query_type,
         };
 
