@@ -624,7 +624,6 @@ impl ScriptThread {
             let page = self.page.borrow();
             if let Some(page) = page.as_ref() {
                 for page in page.iter() {
-                    // Only process a resize if layout is idle.
                     let window = page.window();
                     let resize_event = window.steal_resize_event();
                     match resize_event {
