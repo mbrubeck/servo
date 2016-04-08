@@ -74,7 +74,7 @@ use profile_traits::mem::{self, OpaqueSender, Report, ReportKind, ReportsChan};
 use profile_traits::time::{self, ProfilerCategory, profile};
 use script_runtime::{CommonScriptMsg, ScriptChan, ScriptThreadEventCategory};
 use script_runtime::{ScriptPort, StackRootTLS, new_rt_and_cx, get_reports};
-use script_traits::CompositorEvent::{KeyEvent, MouseButtonEvent, MouseMoveEvent, ResizeEvent};
+use script_traits::CompositorEvent::{KeyEvent, MouseButtonEvent, MouseMoveEvent};
 use script_traits::CompositorEvent::{TouchEvent, TouchpadPressureEvent};
 use script_traits::{CompositorEvent, ConstellationControlMsg, EventResult};
 use script_traits::{InitialScriptState, MouseButton, MouseEventType, MozBrowserEvent, NewLayoutInfo};
@@ -636,7 +636,7 @@ impl ScriptThread {
         }
 
         for (id, size) in resizes {
-            self.handle_event(id, ResizeEvent(size));
+            self.handle_resize_event(id, size);
         }
 
         // Store new resizes, and gather all other events.
@@ -1670,10 +1670,6 @@ impl ScriptThread {
         }
 
         match event {
-            ResizeEvent(new_size) => {
-                self.handle_resize_event(pipeline_id, new_size);
-            }
-
             MouseButtonEvent(event_type, button, point) => {
                 self.handle_mouse_event(pipeline_id, event_type, button, point);
             }

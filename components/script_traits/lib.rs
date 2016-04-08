@@ -219,8 +219,6 @@ pub enum MouseEventType {
 /// Events from the compositor that the script thread needs to know about
 #[derive(Deserialize, Serialize)]
 pub enum CompositorEvent {
-    /// The window was resized.
-    ResizeEvent(WindowSizeData),
     /// A mouse button state changed.
     MouseButtonEvent(MouseEventType, MouseButton, Point2D<f32>),
     /// The mouse was moved over a point (or was moved out of the recognizable region).
