@@ -150,6 +150,9 @@ pub struct IOCompositor<Window: WindowMethods> {
     /// Tracks the last composite time.
     last_composite_time: u64,
 
+    /// Tracks whether a window resize event is pending.
+    window_size_changed: bool,
+
     /// Tracks whether the zoom action has happened recently.
     zoom_action: bool,
 
@@ -427,6 +430,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             viewport_zoom: ScaleFactor::new(1.0),
             min_viewport_zoom: None,
             max_viewport_zoom: None,
+            window_size_changed: false,
             zoom_action: false,
             zoom_time: 0f64,
             got_load_complete_message: false,
@@ -1197,7 +1201,10 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
 
             WindowEvent::Resize(size) => {
-                self.on_resize_window_event(size);
+                if self.window_size != size {
+                    self.window_size = size;
+                    self.window_size_changed = true;
+                }
             }
 
             WindowEvent::LoadUrl(url_string) => {
@@ -1266,8 +1273,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         }
     }
 
-    fn on_resize_window_event(&mut self, new_size: TypedSize2D<DevicePixel, u32>) {
-        debug!("compositor resizing to {:?}", new_size.to_untyped());
+    fn update_window_size(&mut self) {
+        debug!("compositor resizing to {:?}", self.window_size.to_untyped());
 
         // A size change could also mean a resolution change.
         let new_hidpi_factor = self.window.hidpi_factor();
@@ -1276,13 +1283,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             self.update_zoom_transform();
         }
 
-        if self.window_size == new_size {
-            return;
-        }
-
-        self.window_size = new_size;
-
-        self.scene.set_root_layer_size(new_size.as_f32());
+        self.scene.set_root_layer_size(self.window_size.as_f32());
         self.send_window_size();
     }
 
@@ -2419,6 +2420,10 @@ impl<Window> CompositorEventListener for IOCompositor<Window> where Window: Wind
         // Handle any messages coming from the windowing system.
         for message in messages {
             self.handle_window_message(message);
+        }
+
+        if self.window_size_changed {
+            self.update_window_size();
         }
 
         // If a pinch-zoom happened recently, ask for tiles at the new resolution
