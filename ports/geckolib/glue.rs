@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 use style::context::{ReflowGoal};
 use style::dom::{TDocument, TElement, TNode};
 use style::error_reporting::StdoutErrorReporter;
-use style::parallel;
+use style::sequential;
 use style::properties::ComputedValues;
 use style::selector_impl::{SelectorImplExt, PseudoElementCascadeType};
 use style::stylesheets::Origin;
@@ -106,7 +106,7 @@ pub extern "C" fn Servo_RestyleDocument(doc: *mut RawGeckoDocument, raw_data: *m
     };
 
     if node.is_dirty() || node.has_dirty_descendants() {
-        parallel::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context, &mut data.work_queue);
+        sequential::traverse_dom::<GeckoNode, RecalcStyleOnly>(node, &shared_style_context);
     }
 }
 
