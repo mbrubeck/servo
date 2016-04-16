@@ -629,7 +629,7 @@ impl LineBreaker {
             fragment.transform_with_split_info(x, split_result.text_run.clone())
         });
         inline_end_fragment = split_result.inline_end.as_ref().map(|x| {
-            fragment.transform_with_split_info(x, split_result.text_run.clone())
+            fragment.transform_with_split_info(x, split_result.text_run)
         });
 
         // Push the first fragment onto the line we're working on and start off the next line with
