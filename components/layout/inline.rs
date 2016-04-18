@@ -1451,7 +1451,11 @@ impl Flow for InlineFlow {
 
 
         // Now, go through each line and lay out the fragments inside.
-        let mut line_distance_from_flow_block_start = Au(0);
+        let mut line_distance_from_flow_block_start = if let Some(line) = self.lines.first() {
+            line.bounds.start.b
+        } else {
+            Au(0)
+        };
         let line_count = self.lines.len();
         for line_index in 0..line_count {
             let line = &mut self.lines[line_index];
