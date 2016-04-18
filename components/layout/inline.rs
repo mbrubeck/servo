@@ -500,6 +500,7 @@ impl LineBreaker {
                                         &in_fragment,
                                         self.pending_line.bounds.start.b);
         let next_green_zone = next_line.size;
+        debug!("next_line {:?}", next_line);
 
         let new_inline_size = self.pending_line.bounds.size.inline + first_fragment_inline_size;
 
@@ -511,9 +512,15 @@ impl LineBreaker {
             self.pending_line.bounds.start = next_line.start;
             self.pending_line.green_zone = next_green_zone;
 
-            debug_assert!(!self.pending_line_is_empty(), "Non-terminating line breaking");
+            //debug_assert!(!self.pending_line_is_empty(), "Non-terminating line breaking");
             self.work_list.push_front(in_fragment);
             return true
+        }
+
+        if self.pending_line_is_empty() {
+            debug!("LineBreaker: case=first fragment collides vertically with floats");
+            // TODO: Try to split fragment
+            // TODO: If split fails, move line
         }
 
         debug!("LineBreaker: case=adding fragment collides vertically with floats: breaking line");
@@ -611,20 +618,6 @@ impl LineBreaker {
             None => {
                 // We failed to split. Defer to the next line if we're allowed to; otherwise,
                 // rewind to the last line breaking opportunity.
-
-                // FIXME: If impacted by floats, move below the float ceiling?
-                // This means the speculation in `initial_line_placement` failed.
-                if self.pending_line_is_empty() {
-                    let line_bounds = self.floats.place_between_floats(&PlacementInfo {
-                        size: LogicalSize::new(self.floats.writing_mode,
-                                               new_inline_size,
-                                               first_fragment.border_box.size.block),
-                        ceiling: ceiling,
-                        max_inline_size: flow.base.position.size.inline,
-                        kind: FloatKind::Left,
-                    });
-                }
-
                 if fragment_is_line_break_opportunity {
                     debug!("LineBreaker: fragment was unsplittable; deferring to next line");
                     self.work_list.push_front(fragment);
@@ -736,13 +729,13 @@ impl LineBreaker {
     fn split_line_at_last_known_good_position(&mut self,
                                               layout_context: &LayoutContext,
                                               cur_fragment: Fragment,
-                                              line_flush_mode: LineFlushMode) -> bool {
+                                              line_flush_mode: LineFlushMode) {
         let last_known_line_breaking_opportunity =
             match self.last_known_line_breaking_opportunity {
                 None => {
                     // No line breaking opportunity exists at all for this line. Overflow.
                     self.push_fragment_to_line(layout_context, cur_fragment, line_flush_mode);
-                    return false
+                    return;
                 }
                 Some(last_known_line_breaking_opportunity) => last_known_line_breaking_opportunity,
             };
@@ -769,7 +762,6 @@ impl LineBreaker {
         // need to add that feature to the API to handle this case correctly.
         self.pending_line.range.extend_to(last_known_line_breaking_opportunity);
         self.flush_current_line();
-        true
     }
 
     /// Returns the indentation that needs to be applied before the fragment we're reflowing.
