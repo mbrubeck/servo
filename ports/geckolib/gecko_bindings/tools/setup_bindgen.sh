@@ -34,5 +34,5 @@ else
   cd rust-bindgen
 fi
 
-multirust override nightly
+multirust override nightly-2016-04-11
 cargo build
