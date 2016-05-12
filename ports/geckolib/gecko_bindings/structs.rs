@@ -535,7 +535,7 @@ pub const NS_STYLE_RESIZE_NONE: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_RESIZE_BOTH: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_RESIZE_HORIZONTAL: ::std::os::raw::c_uint = 2;
 pub const NS_STYLE_RESIZE_VERTICAL: ::std::os::raw::c_uint = 3;
-pub const NS_STYLE_TEXT_ALIGN_DEFAULT: ::std::os::raw::c_uint = 0;
+pub const NS_STYLE_TEXT_ALIGN_START: ::std::os::raw::c_uint = 0;
 pub const NS_STYLE_TEXT_ALIGN_LEFT: ::std::os::raw::c_uint = 1;
 pub const NS_STYLE_TEXT_ALIGN_RIGHT: ::std::os::raw::c_uint = 2;
 pub const NS_STYLE_TEXT_ALIGN_CENTER: ::std::os::raw::c_uint = 3;
@@ -2040,7 +2040,6 @@ pub struct RefPtr_ConstRemovingRefPtrTraits<T, U> {
 #[derive(Debug, Copy, Clone)]
 pub struct RefPtrGetterAddRefs<T> {
     pub mTargetSmartPtr: *mut RefPtr<T>,
-    pub _phantom0: ::std::marker::PhantomData<T>,
 }
 #[repr(C)]
 #[derive(Debug, Copy)]
@@ -2175,7 +2174,6 @@ pub struct nsCOMPtr<T> {
 #[derive(Debug)]
 pub struct nsGetterAddRefs<T> {
     pub mTargetSmartPtr: *mut nsCOMPtr<T>,
-    pub _phantom0: ::std::marker::PhantomData<T>,
 }
 #[repr(C)]
 #[derive(Debug)]
@@ -2198,7 +2196,6 @@ pub struct nsAutoPtr_Proxy<T, R, Args> {
 #[derive(Debug, Copy, Clone)]
 pub struct nsAutoPtrGetterTransfers<T> {
     pub mTargetSmartPtr: *mut nsAutoPtr<T>,
-    pub _phantom0: ::std::marker::PhantomData<T>,
 }
 pub type PLDHashNumber = u32;
 #[repr(C)]
@@ -3540,6 +3537,9 @@ pub enum nsCSSPropertyLogicalGroup {
     eCSSPropertyLogicalGroup_COUNT = 9,
 }
 pub type nscolor = u32;
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum nsHexColorType { NoAlpha = 0, AllowAlpha = 1, }
 /**
  * This structure precedes the string buffers "we" allocate.  It may be the
  * case that nsTAString::mData does not point to one of these special
@@ -3673,12 +3673,14 @@ pub enum nsCSSUnit {
     eCSSUnit_RGBAColor = 82,
     eCSSUnit_HexColor = 83,
     eCSSUnit_ShortHexColor = 84,
-    eCSSUnit_PercentageRGBColor = 85,
-    eCSSUnit_PercentageRGBAColor = 86,
-    eCSSUnit_HSLColor = 87,
-    eCSSUnit_HSLAColor = 88,
-    eCSSUnit_Percent = 90,
-    eCSSUnit_Number = 91,
+    eCSSUnit_HexColorAlpha = 85,
+    eCSSUnit_ShortHexColorAlpha = 86,
+    eCSSUnit_PercentageRGBColor = 87,
+    eCSSUnit_PercentageRGBAColor = 88,
+    eCSSUnit_HSLColor = 89,
+    eCSSUnit_HSLAColor = 90,
+    eCSSUnit_Percent = 100,
+    eCSSUnit_Number = 101,
     eCSSUnit_PhysicalMillimeter = 200,
     eCSSUnit_ViewportWidth = 700,
     eCSSUnit_ViewportHeight = 701,
@@ -4174,7 +4176,6 @@ pub struct HandleRefPtr<T> {
 #[derive(Debug)]
 pub struct ArenaRefPtr<T> {
     pub mPtr: RefPtr<T>,
-    pub _phantom0: ::std::marker::PhantomData<T>,
 }
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -5496,12 +5497,6 @@ fn bindgen_test_layout_nsStyleEffects() {
     assert_eq!(::std::mem::align_of::<nsStyleEffects>() , 8usize);
 }
 /**
- * This class is used to replace nsTArray in order to allow generating rust
- * bindings for it, and for related classes.
- *
- * If this class or some of the following asserts have to change, please ping
- * bholley, heycam, or emilio first.
- *
  * <div rustbindgen replaces="nsTArray"></div>
  */
 #[repr(C)]
