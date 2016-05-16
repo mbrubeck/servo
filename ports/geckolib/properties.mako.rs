@@ -29,8 +29,8 @@ use style::properties::{CascadePropertyFn, ServoComputedValues, ComputedValues};
 use style::properties::longhands;
 use style::properties::make_cascade_vec;
 use style::properties::style_struct_traits::*;
-use values::{ToGeckoStyleCoord, convert_rgba_to_nscolor, convert_nscolor_to_rgba};
-use values::round_border_to_device_pixels;
+use values::{StyleCoordHelpers, ToGeckoStyleCoord, convert_nscolor_to_rgba};
+use values::{convert_rgba_to_nscolor, round_border_to_device_pixels};
 
 #[derive(Clone)]
 pub struct GeckoComputedValues {

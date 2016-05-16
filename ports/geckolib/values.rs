@@ -4,9 +4,32 @@
 
 use app_units::Au;
 use cssparser::RGBA;
-use gecko_bindings::structs::{nsStyleUnion, nsStyleUnit};
+use gecko_bindings::structs::{nsStyleCoord, nsStyleUnion, nsStyleUnit};
 use std::cmp::max;
 use style::values::computed::{LengthOrPercentage, LengthOrPercentageOrAuto, LengthOrPercentageOrNone};
+
+pub trait StyleCoordHelpers {
+    fn set_coord(&mut self, val: Au);
+    fn set_int(&mut self, val: i32);
+    fn set_percent(&mut self, val: f32);
+}
+
+impl StyleCoordHelpers for nsStyleCoord {
+    fn set_coord(&mut self, val: Au) {
+        self.mUnit = nsStyleUnit::eStyleUnit_Coord;
+        unsafe { *self.mValue.mInt.as_mut() = val.0; }
+    }
+
+    fn set_percent(&mut self, val: f32) {
+        self.mUnit = nsStyleUnit::eStyleUnit_Percent;
+        unsafe { *self.mValue.mFloat.as_mut() = val; }
+    }
+
+    fn set_int(&mut self, val: i32) {
+        self.mUnit = nsStyleUnit::eStyleUnit_Integer;
+        unsafe { *self.mValue.mInt.as_mut() = val; }
+    }
+}
 
 pub trait ToGeckoStyleCoord {
     fn to_gecko_style_coord(&self, unit: &mut nsStyleUnit, union: &mut nsStyleUnion);
