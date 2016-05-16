@@ -126,10 +126,11 @@ ${helpers.single_keyword("clear", "none left right both", gecko_ffi_name="mBreak
   use cssparser::ToCss;
   use std::fmt;
 
-  <% self.keyword = Keyword("vertical-align",
-                            "baseline sub super top text-top middle bottom text-bottom",
-                            extra_gecko_values="middle-with-baseline") %>
-  <% vertical_align_keywords = self.keyword.values_for(product) %>
+  <% vertical_align = data.longhands_by_name["vertical-align"] %>
+  <% vertical_align.keyword = Keyword("vertical-align",
+                                      "baseline sub super top text-top middle bottom text-bottom",
+                                      extra_gecko_values="middle-with-baseline") %>
+  <% vertical_align_keywords = vertical_align.keyword.values_for(product) %>
 
   #[allow(non_camel_case_types)]
   #[derive(Debug, Clone, PartialEq, Copy, HeapSizeOf)]

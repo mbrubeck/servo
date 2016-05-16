@@ -613,7 +613,7 @@ fn static_assert() {
 
 </%self:impl_trait>
 
-<%self:impl_trait style_struct_name="Box" skip_longhands="display overflow-y">
+<%self:impl_trait style_struct_name="Box" skip_longhands="display overflow-y vertical-align">
 
     // We manually-implement the |display| property until we get general
     // infrastructure for preffing certain values.
@@ -645,6 +645,24 @@ fn static_assert() {
             % endfor
             x => panic!("Found unexpected value in style struct for overflow_y property: {}", x),
         }
+    }
+
+    fn set_vertical_align(&mut self, v: longhands::vertical_align::computed_value::T) {
+        <% keyword = data.longhands_by_name["vertical-align"].keyword %>
+        use style::properties::longhands::vertical_align::computed_value::T;
+        // FIXME: Align binary representations and ditch |match| for cast + static_asserts
+        match v {
+            % for value in keyword.values_for('gecko'):
+                T::${to_rust_ident(value)} =>
+                    self.gecko.mVerticalAlign.set_int(structs::${keyword.gecko_constant(value)} as i32),
+            % endfor
+            T::LengthOrPercentage(l) => l.to_gecko_style_coord(&mut self.gecko.mVerticalAlign.mUnit,
+                                                               &mut self.gecko.mVerticalAlign.mValue),
+        }
+    }
+    fn copy_vertical_align_from(&mut self, other: &Self) {
+        self.gecko.mVerticalAlign.mUnit = other.gecko.mVerticalAlign.mUnit;
+        self.gecko.mVerticalAlign.mValue = other.gecko.mVerticalAlign.mValue;
     }
 
 </%self:impl_trait>
