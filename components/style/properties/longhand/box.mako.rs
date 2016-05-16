@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 <%namespace name="helpers" file="/helpers.mako.rs" />
-<% from data import Method, to_rust_ident %>
+<% from data import Method, Keyword, to_rust_ident %>
 
 <% data.new_style_struct("Box",
                          inherited=False,
@@ -126,8 +126,11 @@ ${helpers.single_keyword("clear", "none left right both", gecko_ffi_name="mBreak
   use cssparser::ToCss;
   use std::fmt;
 
-  <% vertical_align_keywords = (
-      "baseline sub super top text-top middle bottom text-bottom".split()) %>
+  <% self.keyword = Keyword("vertical-align",
+                            "baseline sub super top text-top middle bottom text-bottom",
+                            extra_gecko_values="middle-with-baseline") %>
+  <% vertical_align_keywords = self.keyword.values_for(product) %>
+
   #[allow(non_camel_case_types)]
   #[derive(Debug, Clone, PartialEq, Copy, HeapSizeOf)]
   pub enum SpecifiedValue {
