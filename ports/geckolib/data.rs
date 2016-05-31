@@ -44,7 +44,7 @@ pub struct PerDocumentStyleData {
 
 lazy_static! {
     pub static ref NUM_THREADS: usize = {
-        match env::var("STYLO_THREADS").map(|s| s.parse::<usize>().expect("invalid STYLE_THREADS")) {
+        match env::var("STYLO_THREADS").map(|s| s.parse::<usize>().expect("invalid STYLO_THREADS")) {
             Ok(num) => num,
             _ => cmp::max(num_cpus::get() * 3 / 4, 1),
         }
