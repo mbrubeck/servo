@@ -257,6 +257,7 @@ extern "C" {
                                  set: *mut RawServoStyleSet);
     pub fn Servo_RestyleSubtree(node: *mut RawGeckoNode,
                                 set: *mut RawServoStyleSet);
+    pub fn Servo_StyleWorkerThreadCount() -> u32;
     pub fn Gecko_GetAttrAsUTF8(element: *mut RawGeckoElement,
                                ns: *mut nsIAtom, name: *mut nsIAtom,
                                length: *mut u32)
