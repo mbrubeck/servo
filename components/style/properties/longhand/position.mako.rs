@@ -72,10 +72,13 @@ ${helpers.single_keyword("justify-content", "flex-start flex-end center space-be
                          gecko_constant_prefix="NS_STYLE_JUSTIFY",
                          products="servo")}
 
+// FIXME(heycam): Disable align-items in geckolib since we don't support the Gecko initial value
+// 'normal' yet.
 ${helpers.single_keyword("align-items", "stretch flex-start flex-end center baseline",
                          experimental=True,
                          need_clone=True,
-                         gecko_constant_prefix="NS_STYLE_ALIGN")}
+                         gecko_constant_prefix="NS_STYLE_ALIGN",
+                         products="servo")}
 
 ${helpers.single_keyword("align-content", "stretch flex-start flex-end center space-between space-around",
                          experimental=True,
