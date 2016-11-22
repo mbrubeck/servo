@@ -264,6 +264,8 @@ pub trait ThreadSafeLayoutNode: Clone + Copy + Debug + GetLayoutData + NodeInfo 
     fn iframe_pipeline_id(&self) -> PipelineId;
 
     fn get_colspan(&self) -> u32;
+
+    fn get_rowspan(&self) -> u32;
 }
 
 // This trait is only public so that it can be implemented by the gecko wrapper.
