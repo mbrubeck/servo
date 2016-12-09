@@ -781,7 +781,7 @@ pub fn propagate_column_inline_sizes_to_child(
                     col += 1;
                 }
                 for _ in 0..cell.column_span {
-                    if col < incoming_rowspan.len() && incoming_rowspan[col] > 0 {
+                    if col < incoming_rowspan.len() && incoming_rowspan[col] > 1 {
                         incoming_rowspan[col] -= 1;
                     }
                     // If this cell spans later rows, record its rowspan.

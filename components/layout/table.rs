@@ -144,7 +144,7 @@ impl TableFlow {
                     if incoming_rowspan.len() < column_index + 1 {
                         incoming_rowspan.resize(column_index + 1, 0);
                     }
-                    incoming_rowspan[column_index] = child_cell_inline_size.row_span - 1;
+                    incoming_rowspan[column_index] = child_cell_inline_size.row_span;
                 }
 
                 column_index += 1
