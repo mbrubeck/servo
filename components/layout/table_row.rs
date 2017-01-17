@@ -180,14 +180,22 @@ impl TableRowFlow {
             - self.block_flow.fragment.margin;
 
         for kid in self.block_flow.base.child_iter_mut() {
+            // Do in-order layout steps if necessary.
             kid.place_float_if_applicable();
             if !flow::base(kid).flags.is_float() {
                 kid.assign_block_size_for_inorder_child_if_necessary(layout_context,
                                                                      thread_id,
                                                                      content_box);
             }
+            // Calculate the maximum block size of cells originating in this row.
             {
-                let child_fragment = kid.as_mut_table_cell().fragment();
+                // In this pass, treat cells spanning multiple rows as having a height of 0.
+                let table_cell = kid.as_mut_table_cell();
+                if table_cell.row_span != 1 {
+                    continue
+                }
+
+                let child_fragment = table_cell.fragment();
                 // TODO: Percentage block-size
                 let child_specified_block_size =
                     MaybeAuto::from_style(child_fragment.style().content_block_size(),
