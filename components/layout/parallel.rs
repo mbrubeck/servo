@@ -136,6 +136,22 @@ fn top_down_flow<'scope>(unsafe_flows: &[UnsafeFlow],
     for unsafe_flow in unsafe_flows {
         let mut had_children = false;
         unsafe {
+            if !discovered_child_flows.is_empty() {
+                let children = mem::replace(&mut discovered_child_flows, FlowList::new());
+                if children.len() <= CHUNK_SIZE {
+                    scope.spawn(move |scope| {
+                        top_down_flow(&children, scope, &assign_isize_traversal, &assign_bsize_traversal);
+                    });
+                } else {
+                    for chunk in children.chunks(CHUNK_SIZE) {
+                        let nodes = FlowList::from_slice(chunk);
+                        scope.spawn(move |scope| {
+                            top_down_flow(&nodes, scope, &assign_isize_traversal, &assign_bsize_traversal);
+                        });
+                    }
+                }
+            }
+
             // Get a real flow.
             let flow: &mut Flow = mem::transmute(*unsafe_flow);
 
