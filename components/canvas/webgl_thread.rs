@@ -36,7 +36,7 @@ pub struct WebGLThread<VR: WebVRRenderHandler + 'static, OB: WebGLThreadObserver
     webvr_compositor: Option<VR>,
     /// Generic observer that listens WebGLContext creation, resize or removal events.
     observer: OB,
-    fbo_id: u32,
+    tex_id: u32,
 }
 
 impl<VR: WebVRRenderHandler + 'static, OB: WebGLThreadObserver> WebGLThread<VR, OB> {
@@ -53,7 +53,7 @@ impl<VR: WebVRRenderHandler + 'static, OB: WebGLThreadObserver> WebGLThread<VR, 
             next_webgl_id: 0,
             webvr_compositor,
             observer: observer,
-            fbo_id: 0,
+            tex_id: 0,
         }
     }
 
@@ -351,22 +351,11 @@ impl<VR: WebVRRenderHandler + 'static, OB: WebGLThreadObserver> WebGLThread<VR, 
                                 gl::BGRA,
                                 gl::UNSIGNED_BYTE,
                                 None);
-                let current_fbo = gl.get_integer_v(gl::FRAMEBUFFER_BINDING);
-
-                let fbo_id = gl.gen_framebuffers(1)[0];
-
-                gl.bind_framebuffer(gl::FRAMEBUFFER, fbo_id);
-                gl.framebuffer_texture_2d(gl::FRAMEBUFFER,
-                                        gl::COLOR_ATTACHMENT0,
-                                        gl::TEXTURE_2D,
-                                        texture_id,
-                                        0);
-                gl.bind_framebuffer(gl::FRAMEBUFFER, current_fbo as u32);
+                self.tex_id = texture_id;
                 self.webrender_api.enable_frame_output(document_id, pipeline_id, true);
-                self.fbo_id = fbo_id;
             },
             DOMToTextureCommand::Lock(pipeline_id, sender) => {
-                sender.send(self.fbo_id).unwrap();
+                sender.send(self.tex_id).unwrap();
             },
             DOMToTextureCommand::Unlock(pipeline_id) => {
 
