@@ -462,14 +462,9 @@ pub fn child_iter<'a>(flow: &'a Flow) -> impl Iterator<Item = &'a Flow> {
     base(flow).children.iter()
 }
 
-/// Iterates over the children of this immutable flow in parallel.
-pub fn par_child_iter<'a>(flow: &'a Flow) -> impl ParallelIterator<Item = &'a Flow> {
-    base(flow).children.par_iter()
-}
-
-/// Iterates over the children of this immutable flow.
-pub fn child_par_iter<'a>(flow: &'a Flow) -> impl ParallelIterator<Item = &'a Flow> {
-    base(flow).children.par_iter()
+/// Iterates over the children of this mutable flow in parallel.
+pub fn child_par_iter_mut<'a>(flow: &'a mut Flow) -> impl ParallelIterator<Item = &'a mut Flow> {
+    mut_base(flow).children.par_iter_mut()
 }
 
 #[inline(always)]
