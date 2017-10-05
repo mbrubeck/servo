@@ -35,7 +35,6 @@ use inline::{InlineFragmentNodeInfo, LAST_FRAGMENT_OF_ELEMENT};
 use linked_list::prepend_from;
 use list_item::{ListItemFlow, ListStyleTypeContent};
 use multicol::{MulticolColumnFlow, MulticolFlow};
-use parallel;
 use script_layout_interface::{LayoutElementType, LayoutNodeType, is_image_data};
 use script_layout_interface::wrapper_traits::{PseudoElementType, ThreadSafeLayoutElement, ThreadSafeLayoutNode};
 use servo_config::opts;
@@ -45,7 +44,6 @@ use std::collections::LinkedList;
 use std::marker::PhantomData;
 use std::mem;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use style::computed_values::{caption_side, display, empty_cells, float, list_style_position};
 use style::computed_values::content::ContentItem;
 use style::computed_values::position;
@@ -1720,15 +1718,9 @@ trait FlowConstructionUtils {
 
 impl FlowConstructionUtils for FlowRef {
     /// Adds a new flow as a child of this flow. Fails if this flow is marked as a leaf.
-    fn add_new_child(&mut self, mut new_child: FlowRef) {
-        {
-            let kid_base = flow::mut_base(FlowRef::deref_mut(&mut new_child));
-            kid_base.parallel.parent = parallel::mut_owned_flow_to_unsafe_flow(self);
-        }
-
+    fn add_new_child(&mut self, new_child: FlowRef) {
         let base = flow::mut_base(FlowRef::deref_mut(self));
         base.children.push_back(new_child);
-        let _ = base.parallel.children_count.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Finishes a flow. Once a flow is finished, no more child flows or fragments may be added to

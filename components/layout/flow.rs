@@ -41,14 +41,12 @@ use inline::InlineFlow;
 use model::{CollapsibleMargins, IntrinsicISizes, MarginCollapseInfo};
 use msg::constellation_msg::PipelineId;
 use multicol::MulticolFlow;
-use parallel::FlowParallelInfo;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use servo_geometry::{au_rect_to_f32_rect, f32_rect_to_au_rect, max_rect};
 use std::{fmt, mem, raw};
 use std::iter::Zip;
 use std::slice::IterMut;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use style::computed_values::{clear, float, overflow_x, position, text_align};
 use style::context::SharedStyleContext;
 use style::logical_geometry::{LogicalRect, LogicalSize, WritingMode};
@@ -843,11 +841,6 @@ pub struct BaseFlow {
     /// pixels of all the display list items for correct invalidation.
     pub overflow: Overflow,
 
-    /// Data used during parallel traversals.
-    ///
-    /// TODO(pcwalton): Group with other transient data to save space.
-    pub parallel: FlowParallelInfo,
-
     /// The floats next to this flow.
     pub floats: Floats,
 
@@ -919,13 +912,6 @@ pub struct BaseFlow {
 
 impl fmt::Debug for BaseFlow {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let child_count = self.parallel.children_count.load(Ordering::SeqCst);
-        let child_count_string = if child_count > 0 {
-            format!(" children={}", child_count)
-        } else {
-            "".to_owned()
-        };
-
         let absolute_descendants_string = if self.abs_descendants.len() > 0 {
             format!(" abs-descendents={}", self.abs_descendants.len())
         } else {
@@ -940,7 +926,7 @@ impl fmt::Debug for BaseFlow {
 
         write!(f,
                "sc={:?} pos={:?}, {}{} floatspec-in={:?}, floatspec-out={:?}, \
-                overflow={:?}{}{}{}",
+                overflow={:?}{}{}",
                self.stacking_context_id,
                self.position,
                if self.flags.contains(FLOATS_LEFT) { "FL" } else { "" },
@@ -948,7 +934,6 @@ impl fmt::Debug for BaseFlow {
                self.speculated_float_placement_in,
                self.speculated_float_placement_out,
                self.overflow,
-               child_count_string,
                absolute_descendants_string,
                damage_string)
     }
@@ -1038,7 +1023,6 @@ impl BaseFlow {
             intrinsic_inline_sizes: IntrinsicISizes::new(),
             position: LogicalRect::zero(writing_mode),
             overflow: Overflow::new(),
-            parallel: FlowParallelInfo::new(),
             floats: Floats::new(writing_mode),
             collapsible_margins: CollapsibleMargins::new(),
             stacking_relative_position: Vector2D::zero(),
@@ -1087,7 +1071,6 @@ impl BaseFlow {
         BaseFlow {
             children: children,
             restyle_damage: self.restyle_damage | REPAINT | REFLOW_OUT_OF_FLOW | REFLOW,
-            parallel: FlowParallelInfo::new(),
             floats: self.floats.clone(),
             abs_descendants: self.abs_descendants.clone(),
             absolute_cb: self.absolute_cb.clone(),
