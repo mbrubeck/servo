@@ -13,6 +13,7 @@ use flow::{self, Flow};
 use flow_ref::FlowRef;
 use profile_traits::time::{self, TimerMetadata, profile};
 use rayon;
+use rayon::iter::ParallelIterator;
 use servo_config::opts;
 use std::mem;
 use traversal::{AssignBSizes, AssignISizes, BubbleISizes};
@@ -47,11 +48,11 @@ fn top_down_flow(unsafe_flow: &UnsafeFlow,
         }
 
         // Possibly enqueue the children.
-        for kid in flow::child_iter(flow) {
+        flow::par_child_iter(flow).for_each(|kid| {
             top_down_flow(&borrowed_flow_to_unsafe_flow(kid),
                           &assign_isize_traversal,
                           &assign_bsize_traversal);
-        }
+        });
 
         // Perform the appropriate traversal.
         if assign_bsize_traversal.should_process(flow) {

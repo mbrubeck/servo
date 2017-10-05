@@ -4,6 +4,7 @@
 
 use flow::{Flow, FlowClass};
 use flow_ref::FlowRef;
+use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
 use serde::ser::{Serialize, SerializeSeq, Serializer};
 use serde_json::{Map, Value, to_value};
 use std::collections::{LinkedList, linked_list};
@@ -103,6 +104,15 @@ impl FlowList {
     #[inline]
     pub fn iter<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a Flow> {
         self.flows.iter().map(|flow| &**flow)
+    }
+
+    /// Provide a parallel forward iterator.
+    ///
+    /// SECURITY-NOTE(pcwalton): This does not hand out `FlowRef`s by design. Do not add a method
+    /// to do so! See the comment above in `FlowList`.
+    #[inline]
+    pub fn par_iter<'a>(&'a self) -> impl ParallelIterator<Item = &'a Flow> {
+        self.flows.par_iter().map(|flow| &**flow)
     }
 
     /// Provide a forward iterator with mutable references

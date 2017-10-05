@@ -41,6 +41,7 @@ use inline::InlineFlow;
 use model::{CollapsibleMargins, IntrinsicISizes, MarginCollapseInfo};
 use msg::constellation_msg::PipelineId;
 use multicol::MulticolFlow;
+use rayon::iter::ParallelIterator;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use servo_geometry::{au_rect_to_f32_rect, f32_rect_to_au_rect, max_rect};
 use std::{fmt, mem, raw};
@@ -459,6 +460,16 @@ pub fn base<T: ?Sized + Flow>(this: &T) -> &BaseFlow {
 /// Iterates over the children of this immutable flow.
 pub fn child_iter<'a>(flow: &'a Flow) -> impl Iterator<Item = &'a Flow> {
     base(flow).children.iter()
+}
+
+/// Iterates over the children of this immutable flow in parallel.
+pub fn par_child_iter<'a>(flow: &'a Flow) -> impl ParallelIterator<Item = &'a Flow> {
+    base(flow).children.par_iter()
+}
+
+/// Iterates over the children of this immutable flow.
+pub fn child_par_iter<'a>(flow: &'a Flow) -> impl ParallelIterator<Item = &'a Flow> {
+    base(flow).children.par_iter()
 }
 
 #[inline(always)]
