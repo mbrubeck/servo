@@ -7,7 +7,7 @@
 use construct::FlowConstructor;
 use context::LayoutContext;
 use display_list_builder::DisplayListBuildState;
-use flow::{self, FlowFlags, Flow, ImmutableFlowUtils};
+use flow::{self, FlowFlags, Flow};
 use script_layout_interface::wrapper_traits::{LayoutNode, ThreadSafeLayoutNode};
 use servo_config::opts;
 use style::context::{SharedStyleContext, StyleContext};
@@ -264,15 +264,6 @@ pub struct AssignBSizes<'a> {
 impl<'a> PostorderFlowTraversal for AssignBSizes<'a> {
     #[inline]
     fn process(&self, flow: &mut Flow) {
-        // Can't do anything with anything that floats might flow through until we reach their
-        // inorder parent.
-        //
-        // NB: We must return without resetting the restyle bits for these, as we haven't actually
-        // reflowed anything!
-        if flow.floats_might_flow_through() {
-            return
-        }
-
         flow.assign_block_size(self.layout_context);
     }
 

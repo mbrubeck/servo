@@ -455,6 +455,11 @@ impl SpeculatedFloatPlacement {
         }
     }
 
+    /// Returns true if both left and right sizes are zero.
+    pub fn is_zero(&self) -> bool {
+        (self.left, self.right) == (Au(0), Au(0))
+    }
+
     /// Given the speculated inline size of the floats out for the inorder predecessor of this
     /// flow, computes the speculated inline size of the floats flowing in.
     pub fn compute_floats_in(&mut self, flow: &mut Flow) {

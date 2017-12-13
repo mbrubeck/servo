@@ -10,8 +10,9 @@
 
 use block::BlockFlow;
 use context::LayoutContext;
-use flow::{self, Flow};
+use flow::{self, Flow, FlowFlags};
 use flow_ref::FlowRef;
+use incremental::RelayoutMode;
 use profile_traits::time::{self, TimerMetadata, profile};
 use rayon;
 use servo_config::opts;
@@ -136,9 +137,26 @@ fn top_down_flow<'scope>(unsafe_flows: &[UnsafeFlow],
             }
 
             // Possibly enqueue the children.
-            for kid in flow::child_iter_mut(flow) {
+            let mut kids = flow::child_iter_mut(flow);
+
+            while let Some(mut kid) = kids.next() {
                 had_children = true;
-                discovered_child_flows.push(UnsafeFlow(kid));
+                if flow::base(kid).flags.contains(FlowFlags::HAS_FLOAT_DESCENDANTS) {
+                    loop {
+                        // Process sequentially until we get past all floats.
+                        ::sequential::doit(kid, assign_isize_traversal, assign_bsize_traversal, RelayoutMode::Incremental);
+                        if !flow::base(kid).floats.is_present() {
+                            break
+                        }
+
+                        kid = match kids.next() {
+                            Some(kid) => kid,
+                            None => break
+                        };
+                    }
+                } else {
+                    discovered_child_flows.push(UnsafeFlow(kid));
+                }
             }
         }
 

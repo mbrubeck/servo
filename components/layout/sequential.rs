@@ -22,33 +22,34 @@ pub fn resolve_generated_content(root: &mut Flow, layout_context: &LayoutContext
     ResolveGeneratedContent::new(&layout_context).traverse(root, 0);
 }
 
-/// Run the main layout passes sequentially.
-pub fn reflow(root: &mut Flow, layout_context: &LayoutContext, relayout_mode: RelayoutMode) {
-    fn doit(flow: &mut Flow,
-            assign_inline_sizes: AssignISizes,
-            assign_block_sizes: AssignBSizes,
+/// TODO
+pub fn doit(flow: &mut Flow,
+            assign_inline_sizes: &AssignISizes,
+            assign_block_sizes: &AssignBSizes,
             relayout_mode: RelayoutMode) {
-        // Force reflow children during this traversal. This is needed when we failed
-        // the float speculation of a block formatting context and need to fix it.
-        if relayout_mode == RelayoutMode::Force {
-            flow::mut_base(flow)
-                .restyle_damage
-                .insert(ServoRestyleDamage::REFLOW_OUT_OF_FLOW | ServoRestyleDamage::REFLOW);
-        }
-
-        if assign_inline_sizes.should_process(flow) {
-            assign_inline_sizes.process(flow);
-        }
-
-        for kid in flow::child_iter_mut(flow) {
-            doit(kid, assign_inline_sizes, assign_block_sizes, relayout_mode);
-        }
-
-        if assign_block_sizes.should_process(flow) {
-            assign_block_sizes.process(flow);
-        }
+    // Force reflow children during this traversal. This is needed when we failed
+    // the float speculation of a block formatting context and need to fix it.
+    if relayout_mode == RelayoutMode::Force {
+        flow::mut_base(flow)
+            .restyle_damage
+            .insert(ServoRestyleDamage::REFLOW_OUT_OF_FLOW | ServoRestyleDamage::REFLOW);
     }
 
+    if assign_inline_sizes.should_process(flow) {
+        assign_inline_sizes.process(flow);
+    }
+
+    for kid in flow::child_iter_mut(flow) {
+        doit(kid, assign_inline_sizes, assign_block_sizes, relayout_mode);
+    }
+
+    if assign_block_sizes.should_process(flow) {
+        assign_block_sizes.process(flow);
+    }
+}
+
+/// Run the main layout passes sequentially.
+pub fn reflow(root: &mut Flow, layout_context: &LayoutContext, relayout_mode: RelayoutMode) {
     if opts::get().bubble_inline_sizes_separately {
         let bubble_inline_sizes = BubbleISizes {
             layout_context: &layout_context,
@@ -63,7 +64,7 @@ pub fn reflow(root: &mut Flow, layout_context: &LayoutContext, relayout_mode: Re
         layout_context: &layout_context,
     };
 
-    doit(root, assign_inline_sizes, assign_block_sizes, relayout_mode);
+    doit(root, &assign_inline_sizes, &assign_block_sizes, relayout_mode);
 }
 
 pub fn build_display_list_for_subtree<'a>(flow_root: &mut Flow,
