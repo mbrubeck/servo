@@ -538,6 +538,9 @@ pub trait ImmutableFlowUtils {
     /// speculation pass.
     fn floats_might_flow_through(self) -> bool;
 
+    /// Returns true if this flow establishes a block formatting context.
+    fn is_formatting_context(self) -> bool;
+
     fn baseline_offset_of_last_line_box_in_flow(self) -> Option<Au>;
 }
 
@@ -641,6 +644,9 @@ bitflags! {
 
         /// Whether margins are prohibited from collapsing with this flow.
         const MARGINS_CANNOT_COLLAPSE = 0b0010_0000_0000_0000_0000_0000;
+
+        /// TODO
+        const HAS_FLOAT_DESCENDANTS = 0b0100_0000_0000_0000_0000_0000;
     }
 }
 
@@ -1013,8 +1019,8 @@ impl BaseFlow {
                 if force_nonfloated == ForceNonfloatedFlag::FloatIfNecessary {
                     match style.get_box().float {
                         Float::None => {}
-                        Float::Left => flags.insert(FlowFlags::FLOATS_LEFT),
-                        Float::Right => flags.insert(FlowFlags::FLOATS_RIGHT),
+                        Float::Left => flags.insert(FlowFlags::FLOATS_LEFT | FlowFlags::HAS_FLOAT_DESCENDANTS),
+                        Float::Right => flags.insert(FlowFlags::FLOATS_RIGHT | FlowFlags::HAS_FLOAT_DESCENDANTS),
                     }
                 }
 
@@ -1280,10 +1286,15 @@ impl<'a> ImmutableFlowUtils for &'a Flow {
         if self.is_root() {
             return false
         }
-        if !self.is_block_like() {
-            return true
+        if self.is_formatting_context() {
+            return false
         }
-        self.as_block().formatting_context_type() == FormattingContextType::None
+        true
+    }
+
+    fn is_formatting_context(self) -> bool {
+        self.is_block_like() &&
+            self.as_block().formatting_context_type() != FormattingContextType::None
     }
 
     fn baseline_offset_of_last_line_box_in_flow(self) -> Option<Au> {

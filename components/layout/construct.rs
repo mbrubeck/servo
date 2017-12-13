@@ -1731,12 +1731,17 @@ trait FlowConstructionUtils {
 impl FlowConstructionUtils for FlowRef {
     /// Adds a new flow as a child of this flow. Fails if this flow is marked as a leaf.
     fn add_new_child(&mut self, mut new_child: FlowRef) {
+        let kid_has_float_descendants;
         {
             let kid_base = flow::mut_base(FlowRef::deref_mut(&mut new_child));
             kid_base.parallel.parent = parallel::mut_owned_flow_to_unsafe_flow(self);
+            kid_has_float_descendants = kid_base.flags & FlowFlags::HAS_FLOAT_DESCENDANTS;
         }
 
         let base = flow::mut_base(FlowRef::deref_mut(self));
+        if !new_child.is_formatting_context() {
+            base.flags.insert(kid_has_float_descendants);
+        }
         base.children.push_back(new_child);
         let _ = base.parallel.children_count.fetch_add(1, Ordering::Relaxed);
     }
