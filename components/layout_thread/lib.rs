@@ -70,7 +70,7 @@ use layout::context::RegisteredPainter;
 use layout::context::RegisteredPainters;
 use layout::context::malloc_size_of_persistent_local_context;
 use layout::display_list_builder::ToGfxColor;
-use layout::flow::{Flow, ImmutableFlowUtils, MutableOwnedFlowUtils};
+use layout::flow::{Flow, MutableOwnedFlowUtils};
 use layout::flow_ref::FlowRef;
 use layout::incremental::{LayoutDamageComputation, RelayoutMode, SpecialRestyleDamage};
 use layout::layout_debug;

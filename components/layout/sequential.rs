@@ -9,7 +9,7 @@ use context::LayoutContext;
 use display_list_builder::{DisplayListBuildState, StackingContextCollectionState};
 use euclid::{Point2D, Vector2D};
 use floats::SpeculatedFloatPlacement;
-use flow::{Flow, ImmutableFlowUtils, FlowFlags};
+use flow::{Flow, FlowFlags};
 use fragment::{FragmentBorderBoxIterator, CoordinateSystem};
 use generated_content::ResolveGeneratedContent;
 use incremental::RelayoutMode;

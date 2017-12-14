@@ -13,7 +13,7 @@ use display_list_builder::{DisplayListBuildState, FlexFlowDisplayListBuilding};
 use display_list_builder::StackingContextCollectionState;
 use euclid::Point2D;
 use floats::FloatKind;
-use flow::{Flow, FlowClass, ImmutableFlowUtils, OpaqueFlow, FlowFlags};
+use flow::{Flow, FlowClass, OpaqueFlow, FlowFlags};
 use fragment::{Fragment, FragmentBorderBoxIterator, Overflow};
 use layout_debug;
 use model::{AdjoiningMargins, CollapsibleMargins};
@@ -547,7 +547,7 @@ impl FlexFlow {
 
         debug!("content_inline_size = {:?}", content_inline_size);
 
-        let child_count = ImmutableFlowUtils::child_count(self as &Flow) as i32;
+        let child_count = self.child_count() as i32;
         debug!("child_count = {:?}", child_count);
         if child_count == 0 {
             return;
@@ -958,7 +958,7 @@ impl Flow for FlexFlow {
                 self.block_flow.base.collapsible_margins = CollapsibleMargins::Collapse(block_start, block_end);
 
                 // TODO(stshine): assign proper static position for absolute descendants.
-                if (&*self as &Flow).contains_roots_of_absolute_flow_tree() {
+                if self.contains_roots_of_absolute_flow_tree() {
                     // Assign block-sizes for all flows in this absolute flow tree.
                     // This is preorder because the block-size of an absolute flow may depend on
                     // the block-size of its containing block, which may also be an absolute flow.

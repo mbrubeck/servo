@@ -4,7 +4,7 @@
 
 use app_units::{Au, MAX_AU};
 use block::FormattingContextType;
-use flow::{Flow, FlowFlags, ImmutableFlowUtils};
+use flow::{Flow, FlowFlags};
 use persistent_list::PersistentList;
 use std::cmp::{max, min};
 use std::fmt;

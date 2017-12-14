@@ -13,7 +13,7 @@ use display_list_builder::{BlockFlowDisplayListBuilding, BorderPaintingMode};
 use display_list_builder::{DisplayListBuildState, StackingContextCollectionFlags};
 use display_list_builder::StackingContextCollectionState;
 use euclid::Point2D;
-use flow::{EarlyAbsolutePositionInfo, Flow, FlowClass, ImmutableFlowUtils, OpaqueFlow};
+use flow::{EarlyAbsolutePositionInfo, Flow, FlowClass, OpaqueFlow};
 use flow_list::MutFlowListIterator;
 use fragment::{Fragment, FragmentBorderBoxIterator, Overflow};
 use gfx_traits::print_tree::PrintTree;

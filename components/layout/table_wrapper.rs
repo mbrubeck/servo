@@ -21,7 +21,7 @@ use display_list_builder::{BlockFlowDisplayListBuilding, DisplayListBuildState, 
 use display_list_builder::StackingContextCollectionState;
 use euclid::Point2D;
 use floats::FloatKind;
-use flow::{Flow, FlowClass, ImmutableFlowUtils, FlowFlags, OpaqueFlow};
+use flow::{Flow, FlowClass, FlowFlags, OpaqueFlow};
 use fragment::{Fragment, FragmentBorderBoxIterator, Overflow};
 use gfx_traits::print_tree::PrintTree;
 use model::MaybeAuto;

@@ -79,7 +79,7 @@ pub unsafe trait HasBaseFlow {}
 /// Virtual methods that make up a float context.
 ///
 /// Note that virtual methods have a cost; we should not overuse them in Servo. Consider adding
-/// methods to `ImmutableFlowUtils` or `MutableFlowUtils` before adding more methods here.
+/// methods to `Flow` or `MutableFlowUtils` before adding more methods here.
 pub trait Flow: HasBaseFlow + fmt::Debug + Sync + Send + 'static {
     #[inline(always)]
     #[allow(unsafe_code)]
@@ -479,64 +479,168 @@ pub trait Flow: HasBaseFlow + fmt::Debug + Sync + Send + 'static {
             None => unreachable!("Tried to access scroll root id on Flow before assignment"),
         }
     }
-}
-
-pub trait ImmutableFlowUtils {
-    // Convenience functions
 
     /// Returns true if this flow is a block flow or subclass thereof.
-    fn is_block_like(self) -> bool;
-
-    /// Returns true if this flow is a table flow.
-    fn is_table(self) -> bool;
-
-    /// Returns true if this flow is a table caption flow.
-    fn is_table_caption(self) -> bool;
+    fn is_block_like(&self) -> bool {
+        self.class().is_block_like()
+    }
 
     /// Returns true if this flow is a proper table child.
-    fn is_proper_table_child(self) -> bool;
+    /// 'Proper table child' is defined as table-row flow, table-rowgroup flow,
+    /// table-column-group flow, or table-caption flow.
+    fn is_proper_table_child(&self) -> bool {
+        match self.class() {
+            FlowClass::TableRow | FlowClass::TableRowGroup |
+                FlowClass::TableColGroup | FlowClass::TableCaption => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is a table row flow.
-    fn is_table_row(self) -> bool;
+    fn is_table_row(&self) -> bool {
+        match self.class() {
+            FlowClass::TableRow => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is a table cell flow.
-    fn is_table_cell(self) -> bool;
+    fn is_table_cell(&self) -> bool {
+        match self.class() {
+            FlowClass::TableCell => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is a table colgroup flow.
-    fn is_table_colgroup(self) -> bool;
+    fn is_table_colgroup(&self) -> bool {
+        match self.class() {
+            FlowClass::TableColGroup => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this flow is a table flow.
+    fn is_table(&self) -> bool {
+        match self.class() {
+            FlowClass::Table => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if this flow is a table caption flow.
+    fn is_table_caption(&self) -> bool {
+        match self.class() {
+            FlowClass::TableCaption => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is a table rowgroup flow.
-    fn is_table_rowgroup(self) -> bool;
+    fn is_table_rowgroup(&self) -> bool {
+        match self.class() {
+            FlowClass::TableRowGroup => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is one of table-related flows.
-    fn is_table_kind(self) -> bool;
+    fn is_table_kind(&self) -> bool {
+        match self.class() {
+            FlowClass::TableWrapper | FlowClass::Table |
+                FlowClass::TableColGroup | FlowClass::TableRowGroup |
+                FlowClass::TableRow | FlowClass::TableCaption | FlowClass::TableCell => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow has no children.
-    fn is_leaf(self) -> bool;
+    fn is_leaf(&self) -> bool {
+        self.base().children.is_empty()
+    }
 
     /// Returns the number of children that this flow possesses.
-    fn child_count(self) -> usize;
+    fn child_count(&self) -> usize {
+        self.base().children.len()
+    }
 
     /// Return true if this flow is a Block Container.
-    fn is_block_container(self) -> bool;
+    ///
+    /// Except for table fragments and replaced elements, block-level fragments (`BlockFlow`) are
+    /// also block container fragments.
+    /// Non-replaced inline blocks and non-replaced table cells are also block
+    /// containers.
+    fn is_block_container(&self) -> bool {
+        match self.class() {
+            // TODO: Change this when inline-blocks are supported.
+            FlowClass::Block | FlowClass::TableCaption | FlowClass::TableCell => {
+                // FIXME: Actually check the type of the node
+                self.child_count() != 0
+            }
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is a block flow.
-    fn is_block_flow(self) -> bool;
+    fn is_block_flow(&self) -> bool {
+        match self.class() {
+            FlowClass::Block => true,
+            _ => false,
+        }
+    }
 
     /// Returns true if this flow is an inline flow.
-    fn is_inline_flow(self) -> bool;
+    fn is_inline_flow(&self) -> bool {
+        match self.class() {
+            FlowClass::Inline => true,
+            _ => false,
+        }
+    }
 
     /// Dumps the flow tree for debugging.
-    fn print(self, title: String);
+    fn print(&self, title: String) {
+        let mut print_tree = PrintTree::new(title);
+        self.print_with_tree(&mut print_tree);
+    }
 
     /// Dumps the flow tree for debugging into the given PrintTree.
-    fn print_with_tree(self, print_tree: &mut PrintTree);
+    fn print_with_tree(&self, print_tree: &mut PrintTree) {
+        print_tree.new_level(format!("{:?}", self));
+        self.print_extra_flow_children(print_tree);
+        for kid in self.child_iter() {
+            kid.print_with_tree(print_tree);
+        }
+        print_tree.end_level();
+    }
 
-    /// Returns true if floats might flow through this flow, as determined by the float placement
-    /// speculation pass.
-    fn floats_might_flow_through(self) -> bool;
+    fn floats_might_flow_through(&self) -> bool {
+        if !self.base().might_have_floats_in() && !self.base().might_have_floats_out() {
+            return false
+        }
+        if self.is_root() {
+            return false
+        }
+        if !self.is_block_like() {
+            return true
+        }
+        self.as_block().formatting_context_type() == FormattingContextType::None
+    }
 
-    fn baseline_offset_of_last_line_box_in_flow(self) -> Option<Au>;
+    fn baseline_offset_of_last_line_box_in_flow(&self) -> Option<Au> {
+        for kid in self.base().children.iter().rev() {
+            if kid.is_inline_flow() {
+                if let Some(baseline_offset) = kid.as_inline().baseline_offset_of_last_line() {
+                    return Some(kid.base().position.start.b + baseline_offset)
+                }
+            }
+            if kid.is_block_like() && !kid.base().flags.contains(FlowFlags::IS_ABSOLUTELY_POSITIONED) {
+                if let Some(baseline_offset) = kid.baseline_offset_of_last_line_box_in_flow() {
+                    return Some(kid.base().position.start.b + baseline_offset)
+                }
+            }
+        }
+        None
+    }
 }
 
 pub trait MutableFlowUtils {
@@ -1134,170 +1238,6 @@ impl BaseFlow {
     pub fn might_have_floats_out(&self) -> bool {
         self.speculated_float_placement_out.left > Au(0) ||
             self.speculated_float_placement_out.right > Au(0)
-    }
-}
-
-impl<'a> ImmutableFlowUtils for &'a Flow {
-    /// Returns true if this flow is a block flow or subclass thereof.
-    fn is_block_like(self) -> bool {
-        self.class().is_block_like()
-    }
-
-    /// Returns true if this flow is a proper table child.
-    /// 'Proper table child' is defined as table-row flow, table-rowgroup flow,
-    /// table-column-group flow, or table-caption flow.
-    fn is_proper_table_child(self) -> bool {
-        match self.class() {
-            FlowClass::TableRow | FlowClass::TableRowGroup |
-                FlowClass::TableColGroup | FlowClass::TableCaption => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table row flow.
-    fn is_table_row(self) -> bool {
-        match self.class() {
-            FlowClass::TableRow => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table cell flow.
-    fn is_table_cell(self) -> bool {
-        match self.class() {
-            FlowClass::TableCell => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table colgroup flow.
-    fn is_table_colgroup(self) -> bool {
-        match self.class() {
-            FlowClass::TableColGroup => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table flow.
-    fn is_table(self) -> bool {
-        match self.class() {
-            FlowClass::Table => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table caption flow.
-    fn is_table_caption(self) -> bool {
-        match self.class() {
-            FlowClass::TableCaption => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a table rowgroup flow.
-    fn is_table_rowgroup(self) -> bool {
-        match self.class() {
-            FlowClass::TableRowGroup => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is one of table-related flows.
-    fn is_table_kind(self) -> bool {
-        match self.class() {
-            FlowClass::TableWrapper | FlowClass::Table |
-                FlowClass::TableColGroup | FlowClass::TableRowGroup |
-                FlowClass::TableRow | FlowClass::TableCaption | FlowClass::TableCell => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow has no children.
-    fn is_leaf(self) -> bool {
-        self.base().children.is_empty()
-    }
-
-    /// Returns the number of children that this flow possesses.
-    fn child_count(self) -> usize {
-        self.base().children.len()
-    }
-
-    /// Return true if this flow is a Block Container.
-    ///
-    /// Except for table fragments and replaced elements, block-level fragments (`BlockFlow`) are
-    /// also block container fragments.
-    /// Non-replaced inline blocks and non-replaced table cells are also block
-    /// containers.
-    fn is_block_container(self) -> bool {
-        match self.class() {
-            // TODO: Change this when inline-blocks are supported.
-            FlowClass::Block | FlowClass::TableCaption | FlowClass::TableCell => {
-                // FIXME: Actually check the type of the node
-                self.child_count() != 0
-            }
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is a block flow.
-    fn is_block_flow(self) -> bool {
-        match self.class() {
-            FlowClass::Block => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this flow is an inline flow.
-    fn is_inline_flow(self) -> bool {
-        match self.class() {
-            FlowClass::Inline => true,
-            _ => false,
-        }
-    }
-
-    /// Dumps the flow tree for debugging.
-    fn print(self, title: String) {
-        let mut print_tree = PrintTree::new(title);
-        self.print_with_tree(&mut print_tree);
-    }
-
-    /// Dumps the flow tree for debugging into the given PrintTree.
-    fn print_with_tree(self, print_tree: &mut PrintTree) {
-        print_tree.new_level(format!("{:?}", self));
-        self.print_extra_flow_children(print_tree);
-        for kid in self.child_iter() {
-            kid.print_with_tree(print_tree);
-        }
-        print_tree.end_level();
-    }
-
-    fn floats_might_flow_through(self) -> bool {
-        if !self.base().might_have_floats_in() && !self.base().might_have_floats_out() {
-            return false
-        }
-        if self.is_root() {
-            return false
-        }
-        if !self.is_block_like() {
-            return true
-        }
-        self.as_block().formatting_context_type() == FormattingContextType::None
-    }
-
-    fn baseline_offset_of_last_line_box_in_flow(self) -> Option<Au> {
-        for kid in self.base().children.iter().rev() {
-            if kid.is_inline_flow() {
-                if let Some(baseline_offset) = kid.as_inline().baseline_offset_of_last_line() {
-                    return Some(kid.base().position.start.b + baseline_offset)
-                }
-            }
-            if kid.is_block_like() && !kid.base().flags.contains(FlowFlags::IS_ABSOLUTELY_POSITIONED) {
-                if let Some(baseline_offset) = kid.baseline_offset_of_last_line_box_in_flow() {
-                    return Some(kid.base().position.start.b + baseline_offset)
-                }
-            }
-        }
-        None
     }
 }
 

@@ -9,7 +9,7 @@
 //! as possible.
 
 use context::{LayoutContext, with_thread_local_font_context};
-use flow::{Flow, FlowFlags, ImmutableFlowUtils};
+use flow::{Flow, FlowFlags};
 use fragment::{Fragment, GeneratedContentInfo, SpecificFragmentInfo, UnscannedTextFragmentInfo};
 use gfx::display_list::OpaqueNode;
 use script_layout_interface::wrapper_traits::PseudoElementType;

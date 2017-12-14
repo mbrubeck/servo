@@ -19,7 +19,7 @@ use context::{LayoutContext, with_thread_local_font_context};
 use data::{LayoutDataFlags, LayoutData};
 use flex::FlexFlow;
 use floats::FloatKind;
-use flow::{AbsoluteDescendants, Flow, FlowClass, ImmutableFlowUtils};
+use flow::{AbsoluteDescendants, Flow, FlowClass};
 use flow::{FlowFlags, MutableFlowUtils, MutableOwnedFlowUtils};
 use flow_ref::FlowRef;
 use fragment::{CanvasFragmentInfo, ImageFragmentInfo, InlineAbsoluteFragmentInfo, SvgFragmentInfo};

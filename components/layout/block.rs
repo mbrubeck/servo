@@ -35,7 +35,7 @@ use display_list_builder::StackingContextCollectionState;
 use euclid::{Point2D, Rect, SideOffsets2D, Size2D};
 use floats::{ClearType, FloatKind, Floats, PlacementInfo};
 use flow::{BaseFlow, EarlyAbsolutePositionInfo, Flow, FlowClass, ForceNonfloatedFlag};
-use flow::{ImmutableFlowUtils, LateAbsolutePositionInfo, OpaqueFlow, FragmentationContext, FlowFlags};
+use flow::{LateAbsolutePositionInfo, OpaqueFlow, FragmentationContext, FlowFlags};
 use flow_list::FlowList;
 use fragment::{CoordinateSystem, Fragment, FragmentBorderBoxIterator, Overflow, FragmentFlags};
 use gfx_traits::print_tree::PrintTree;
@@ -1062,7 +1062,7 @@ impl BlockFlow {
             }
         }
 
-        if (&*self as &Flow).contains_roots_of_absolute_flow_tree() {
+        if self.contains_roots_of_absolute_flow_tree() {
             // Assign block-sizes for all flows in this absolute flow tree.
             // This is preorder because the block-size of an absolute flow may depend on
             // the block-size of its containing block, which may also be an absolute flow.
@@ -1878,7 +1878,7 @@ impl Flow for BlockFlow {
             self.assign_inline_position_for_formatting_context(layout_context, content_box);
         }
 
-        if (self as &Flow).floats_might_flow_through() {
+        if self.floats_might_flow_through() {
             self.base.thread_id = parent_thread_id;
             if self.base.restyle_damage.intersects(ServoRestyleDamage::REFLOW_OUT_OF_FLOW |
                                                    ServoRestyleDamage::REFLOW) {

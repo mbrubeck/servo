@@ -12,7 +12,7 @@ use canvas_traits::canvas::CanvasMsg;
 use context::{LayoutContext, with_thread_local_font_context};
 use euclid::{Transform3D, Point2D, Vector2D, Rect, Size2D};
 use floats::ClearType;
-use flow::{Flow, ImmutableFlowUtils};
+use flow::Flow;
 use flow_ref::FlowRef;
 use gfx;
 use gfx::display_list::{BLUR_INFLATION_FACTOR, OpaqueNode};
