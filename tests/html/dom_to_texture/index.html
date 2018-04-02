@@ -123,7 +123,7 @@
     
             var iframe = document.getElementById("iframe");
             gl.bindTexture(gl.TEXTURE_2D, textures[0]);
-            gl.texImage2DDOM(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, iframe);
+            gl.texImageDOM(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, gl.RGBA, gl.UNSIGNED_BYTE, iframe);
             //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
