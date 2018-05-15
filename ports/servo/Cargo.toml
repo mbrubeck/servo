@@ -24,8 +24,9 @@ ProductName = "Servo"
 
 [features]
 default = ["unstable", "default-except-unstable"]
-default-except-unstable = ["webdriver", "max_log_level"]
+default-except-unstable = ["webdriver", "max_log_level", "pathfinder"]
 max_log_level = ["log/release_max_level_info"]
+pathfinder = ["libservo/pathfinder"]
 webdriver = ["libservo/webdriver"]
 energy-profiling = ["libservo/energy-profiling"]
 debugmozjs = ["libservo/debugmozjs"]
